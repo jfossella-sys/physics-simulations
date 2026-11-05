@@ -1,0 +1,151 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Physics Simulations · Dr. F’s Honors Physics</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,500;12..96,800&family=Atkinson+Hyperlegible:wght@400;700&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --paper: #FBFCFE;
+    --grid: #E3EAF4;
+    --ink: #1B2A4A;
+    --muted: #55657F;
+    --accent: #C98A00;
+    --row: #FFFFFF;
+    --line: #CDD8E8;
+    color-scheme: light;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root {
+      --paper: #121A2C;
+      --grid: #1C2740;
+      --ink: #E8EEF8;
+      --muted: #A3B1C8;
+      --accent: #F2C14E;
+      --row: #18223A;
+      --line: #2B3A5A;
+      color-scheme: dark;
+    }
+  }
+  * { box-sizing: border-box; }
+  body {
+    margin: 0;
+    color: var(--ink);
+    font-family: "Atkinson Hyperlegible", system-ui, sans-serif;
+    font-size: 1.0625rem;
+    line-height: 1.55;
+    background-color: var(--paper);
+    background-image:
+      linear-gradient(var(--grid) 1px, transparent 1px),
+      linear-gradient(90deg, var(--grid) 1px, transparent 1px);
+    background-size: 24px 24px;
+  }
+  main { max-width: 760px; margin: 0 auto; padding: 3rem 1.25rem 4rem; }
+
+  header svg { width: 100%; max-width: 420px; height: auto; display: block; margin-bottom: 0.5rem; }
+  .arc { fill: none; stroke: var(--muted); stroke-width: 2; stroke-dasharray: 4 6; }
+  .ground { stroke: var(--ink); stroke-width: 2; }
+  .ball { fill: var(--accent); }
+  h1 {
+    font-family: "Bricolage Grotesque", Georgia, serif;
+    font-weight: 800;
+    font-size: clamp(2.4rem, 7vw, 3.8rem);
+    line-height: 1.02;
+    letter-spacing: -0.02em;
+    margin: 0 0 0.75rem;
+  }
+  .intro { color: var(--muted); max-width: 34em; margin: 0 0 3rem; }
+
+  h2 {
+    font-family: "Bricolage Grotesque", Georgia, serif;
+    font-weight: 500;
+    font-size: 1.5rem;
+    margin: 2.5rem 0 0.75rem;
+  }
+  ul { list-style: none; margin: 0; padding: 0; border-top: 2px solid var(--ink); }
+  li {
+    display: flex; gap: 1rem; align-items: center; justify-content: space-between;
+    padding: 1rem 0.25rem; border-bottom: 1px solid var(--line);
+    background: transparent;
+  }
+  li h3 { margin: 0; font-size: 1.15rem; }
+  li p { margin: 0.2rem 0 0; color: var(--muted); font-size: 0.98rem; }
+  a.open {
+    flex-shrink: 0;
+    font-weight: 700; text-decoration: none;
+    color: var(--ink); background: var(--row);
+    border: 2px solid var(--ink); border-radius: 999px;
+    padding: 0.45rem 1.1rem;
+  }
+  a.open:hover { background: var(--accent); color: #1B2A4A; border-color: var(--accent); }
+  a.open:focus-visible { outline: 3px solid var(--accent); outline-offset: 3px; }
+  .empty { color: var(--muted); font-style: italic; }
+  footer { margin-top: 4rem; color: var(--muted); font-size: 0.9rem; }
+
+  @media (max-width: 520px) {
+    li { flex-direction: column; align-items: flex-start; }
+  }
+  @media (prefers-reduced-motion: reduce) {
+    .ball animateMotion { display: none; }
+  }
+</style>
+</head>
+<body>
+<main>
+  <header>
+    <svg viewBox="0 0 420 120" role="img" aria-label="A ball following a projectile arc">
+      <path id="path" class="arc" d="M10 110 Q 210 -60 410 110" />
+      <line class="ground" x1="0" y1="111" x2="420" y2="111" />
+      <circle class="ball" r="9" cx="0" cy="0">
+        <animateMotion dur="2.4s" fill="freeze" calcMode="spline" keyTimes="0;1" keySplines="0.3 0 0.7 1">
+          <mpath href="#path" />
+        </animateMotion>
+      </circle>
+    </svg>
+    <h1>Physics Simulations</h1>
+    <p class="intro">Interactive labs for Dr. F’s Honors Physics classes. Pick a simulation, change the variables, and see what the physics does.</p>
+  </header>
+
+  <div id="sims"></div>
+
+  <footer>Dr. F’s Honors Physics</footer>
+</main>
+
+<script>
+  /* ============================================================
+     ADD YOUR SIMULATIONS HERE
+     One line per simulation. Copy a line, paste it below the
+     others, and change the three values:
+       file:  the exact filename you uploaded (case matters!)
+       title: the name students see
+       about: one short sentence describing the sim
+     Sims appear on the page in the same order as this list.
+     ============================================================ */
+  const simulations = [
+    { file: "simulation-1.html", title: "Simulation 1", about: "Boat crossing a river (2D Kinematics)" },
+    { file: "simulation-2.html", title: "Simulation 2", about: "Quarterback passes the ball to wide receiver (2D Kinematics)" },
+  ];
+  /* ======================= END OF LIST ======================= */
+
+  const container = document.getElementById("sims");
+  if (simulations.length === 0) {
+    container.innerHTML = '<p class="empty">No simulations yet. Add one to the list in index.html.</p>';
+  }
+  else {
+    const ul = document.createElement("ul");
+    for (const sim of simulations) {
+      const li = document.createElement("li");
+      li.innerHTML = `<div><h3></h3><p></p></div><a class="open">Open simulation</a>`;
+      li.querySelector("h3").textContent = sim.title;
+      li.querySelector("p").textContent = sim.about;
+      li.querySelector("a").href = sim.file;
+      ul.appendChild(li);
+    }
+    container.appendChild(ul);
+  }
+</script>
+</body>
+</html>
