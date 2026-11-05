@@ -1,0 +1,699 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Pass Play: 2D Kinematics Simulator</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@600;700&family=Barlow:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+:root{
+  --bg:#eaefe6; --panel:#ffffff; --ink:#18261c; --muted:#56675a; --line:#cdd8c9;
+  --turf1:#2f7a3d; --turf2:#2a6f37; --chalk:#f3f7f1; --scrim:#5fb0ff;
+  --qb:#1d3c74; --wr:#e6a417; --ball:#8a4b25; --vball:#e0412f; --vwr:#ffd65c;
+  --good:#23894a; --bad:#bf3a2b; --accent:#1d3c74; --accent-ink:#ffffff;
+  --field-shadow:0 10px 30px rgba(24,38,28,.18);
+  color-scheme: light;
+}
+@media (prefers-color-scheme: dark){
+  :root{
+    --bg:#0e1611; --panel:#16211a; --ink:#e5ede6; --muted:#9db0a1; --line:#2a3b30;
+    --turf1:#21602d; --turf2:#1c5527; --accent:#8fb4ff; --accent-ink:#0e1611;
+    --good:#4cc477; --bad:#ff7a69; --field-shadow:0 10px 30px rgba(0,0,0,.45);
+    color-scheme: dark;
+  }
+}
+*{box-sizing:border-box}
+html,body{margin:0}
+body{
+  background:var(--bg); color:var(--ink);
+  font-family:"Barlow", "Segoe UI", system-ui, -apple-system, sans-serif;
+  font-size:16px; line-height:1.45;
+}
+.wrap{max-width:1440px; margin:0 auto; padding:12px 16px 40px}
+header{display:flex; flex-wrap:wrap; align-items:baseline; gap:4px 18px; margin-bottom:10px}
+h1{
+  font-family:"Barlow Condensed", "Arial Narrow", sans-serif; font-weight:700;
+  font-size:clamp(26px,3vw,36px); line-height:1; margin:0; letter-spacing:.01em;
+}
+header p{margin:0; color:var(--muted); max-width:80ch; font-size:15px}
+.layout{display:grid; grid-template-columns:minmax(0,1fr) 310px; gap:16px; align-items:start}
+@media (max-width:760px){ .layout{grid-template-columns:1fr} aside{position:static; max-height:none} }
+main{min-width:0}
+
+.field-card{margin:0 auto; position:relative; border-radius:14px; overflow:hidden; box-shadow:var(--field-shadow); background:var(--turf1)}
+canvas{display:block; width:100%; height:auto; touch-action:none}
+.banner{
+  position:absolute; left:50%; top:16px; transform:translateX(-50%);
+  padding:8px 18px; border-radius:999px; font-family:"Barlow Condensed", sans-serif;
+  font-weight:700; font-size:24px; color:#fff; pointer-events:none;
+  opacity:0; transition:opacity .25s; white-space:nowrap; max-width:92%;
+  overflow:hidden; text-overflow:ellipsis;
+}
+.banner.show{opacity:1}
+.banner.good{background:var(--good)} .banner.bad{background:var(--bad)}
+@media (prefers-color-scheme: dark){ .banner{color:#0e1611} }
+
+.transport{display:flex; flex-wrap:wrap; gap:8px; align-items:center; margin:10px 0}
+button{
+  font:inherit; font-weight:600; border-radius:10px; padding:9px 16px; cursor:pointer;
+  border:1.5px solid var(--line); background:var(--panel); color:var(--ink);
+}
+button.primary{background:var(--accent); color:var(--accent-ink); border-color:var(--accent); min-width:110px}
+button:focus-visible, input:focus-visible{outline:3px solid var(--scrim); outline-offset:2px}
+button:disabled{opacity:.45; cursor:not-allowed}
+.seg{display:inline-flex; border:1.5px solid var(--line); border-radius:10px; overflow:hidden; margin-left:auto}
+.seg button{border:0; border-radius:0; padding:9px 12px; background:var(--panel)}
+.seg button[aria-pressed="true"]{background:var(--ink); color:var(--bg)}
+.seg-label{color:var(--muted); font-size:14px}
+
+.readouts{display:grid; grid-template-columns:repeat(4,minmax(0,1fr)); gap:10px}
+@media (max-width:700px){ .readouts{grid-template-columns:repeat(2,minmax(0,1fr))} }
+.ro{background:var(--panel); border:1px solid var(--line); border-radius:12px; padding:8px 12px}
+.ro h3{margin:0 0 4px; font-size:14px; font-weight:600; color:var(--muted); display:flex; align-items:center; gap:7px}
+.dot{width:11px; height:11px; border-radius:50%; display:inline-block; flex:none}
+.ro .big{font-family:"Barlow Condensed", sans-serif; font-weight:700; font-size:26px; line-height:1.05; font-variant-numeric:tabular-nums}
+.ro .small{font-size:14px; font-variant-numeric:tabular-nums; color:var(--ink)}
+.ro .small span{color:var(--muted)}
+
+aside{display:flex; flex-direction:column; gap:10px; position:sticky; top:10px; max-height:calc(100vh - 20px); overflow-y:auto}
+.panel{background:var(--panel); border:1px solid var(--line); border-radius:14px; padding:10px 14px}
+.panel h2{
+  font-family:"Barlow Condensed", sans-serif; font-weight:700; font-size:20px;
+  margin:0 0 2px; display:flex; align-items:center; gap:8px;
+}
+.ctrl{margin:6px 0 2px}
+.ctrl label{display:flex; justify-content:space-between; align-items:center; font-size:14.5px; font-weight:500; gap:10px}
+.ctrl label small{color:var(--muted); font-weight:400}
+.ctrl .row{display:flex; align-items:center; gap:10px; margin-top:1px}
+input[type=range]{flex:1; accent-color:var(--accent); min-width:0}
+input[type=number]{
+  width:76px; font:inherit; font-size:14.5px; padding:4px 6px; border-radius:8px;
+  border:1.5px solid var(--line); background:var(--bg); color:var(--ink); font-variant-numeric:tabular-nums;
+}
+.toggles{display:grid; grid-template-columns:1fr 1fr; gap:4px 8px; font-size:14px}
+.toggles label{display:flex; gap:7px; align-items:center; cursor:pointer}
+.toggles input{accent-color:var(--accent); width:16px; height:16px}
+.hint-box{margin-top:10px; font-size:14.5px; color:var(--muted); display:none}
+.hint-box.show{display:block}
+.hint-box strong{color:var(--ink)}
+.hint-box button{margin-top:6px; padding:6px 12px; font-size:14px}
+
+.lower{display:grid; grid-template-columns:minmax(0,1.3fr) minmax(0,1fr); gap:18px; margin-top:18px}
+@media (max-width:980px){ .lower{grid-template-columns:1fr} }
+.table-wrap{max-height:280px; overflow:auto; border:1px solid var(--line); border-radius:10px}
+table{border-collapse:collapse; width:100%; font-size:14px; font-variant-numeric:tabular-nums}
+th,td{padding:5px 9px; text-align:right; border-bottom:1px solid var(--line); white-space:nowrap}
+th{position:sticky; top:0; background:var(--panel); font-weight:600; color:var(--muted)}
+.panel-head{display:flex; justify-content:space-between; align-items:center; gap:10px; margin-bottom:8px}
+.panel-head h2{margin:0}
+.panel-head button{padding:6px 12px; font-size:14px}
+.empty{padding:16px; color:var(--muted); font-size:14.5px; text-align:center}
+ol.challenges{margin:0; padding-left:20px; font-size:15px}
+ol.challenges li{margin-bottom:8px}
+.note{font-size:14px; color:var(--muted); margin:10px 0 0}
+kbd{font-family:inherit; font-size:13px; border:1px solid var(--line); border-bottom-width:2px; border-radius:5px; padding:0 5px; background:var(--bg)}
+@media (prefers-reduced-motion: reduce){ .banner{transition:none} }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <header>
+    <h1>Pass Play: 2D Kinematics</h1>
+    <p>The quarterback stays put and throws at constant velocity; the receiver runs a straight route at constant velocity. Find the throw angle that makes their paths meet.</p>
+  </header>
+
+  <div class="layout">
+    <main>
+      <div class="field-card">
+        <canvas id="field" aria-label="Top-down football field showing the quarterback, receiver and ball"></canvas>
+        <div class="banner" id="banner" role="status" aria-live="polite"></div>
+      </div>
+
+      <div class="transport">
+        <button class="primary" id="playBtn">Snap ball</button>
+        <button id="stepBtn" title="Advance 0.1 s">Step 0.1 s</button>
+        <button id="resetBtn">Reset play</button>
+        <span class="seg-label">Speed</span>
+        <div class="seg" role="group" aria-label="Playback speed" style="margin-left:0">
+          <button data-speed="0.25">¼×</button>
+          <button data-speed="0.5">½×</button>
+          <button data-speed="1" aria-pressed="true">1×</button>
+        </div>
+      </div>
+
+      <div class="readouts">
+        <div class="ro">
+          <h3>Game clock</h3>
+          <div class="big" id="roT">0.00 s</div>
+          <div class="small" id="roPhase">Pre-snap</div>
+        </div>
+        <div class="ro">
+          <h3><span class="dot" style="background:var(--ball)"></span>Football</h3>
+          <div class="small"><span>x</span> <b id="roBx">0.0</b> m &nbsp; <span>y</span> <b id="roBy">0.0</b> m</div>
+          <div class="small"><span>v<sub>x</sub></span> <b id="roBvx">0.0</b> &nbsp; <span>v<sub>y</sub></span> <b id="roBvy">0.0</b> m/s</div>
+        </div>
+        <div class="ro">
+          <h3><span class="dot" style="background:var(--wr)"></span>Receiver</h3>
+          <div class="small"><span>x</span> <b id="roWx">0.0</b> m &nbsp; <span>y</span> <b id="roWy">0.0</b> m</div>
+          <div class="small"><span>v<sub>x</sub></span> <b id="roWvx">0.0</b> &nbsp; <span>v<sub>y</sub></span> <b id="roWvy">0.0</b> m/s</div>
+        </div>
+        <div class="ro">
+          <h3>Ball-to-receiver gap</h3>
+          <div class="big" id="roGap">—</div>
+          <div class="small" id="roMin"><span>Catch zone: within 1.0 m</span></div>
+        </div>
+      </div>
+    </main>
+
+    <aside>
+      <section class="panel">
+        <h2><span class="dot" style="background:var(--wr)"></span>Receiver’s route</h2>
+        <div class="ctrl" data-key="rx">
+          <label for="rx">Starting x <small>downfield, m</small></label>
+          <div class="row"><input type="range" id="rx" min="-5" max="20" step="0.5" value="2"><input type="number" min="-5" max="20" step="0.5" aria-label="Starting x"></div>
+        </div>
+        <div class="ctrl" data-key="ry">
+          <label for="ry">Starting y <small>across field, m</small></label>
+          <div class="row"><input type="range" id="ry" min="-20" max="20" step="0.5" value="15"><input type="number" min="-20" max="20" step="0.5" aria-label="Starting y"></div>
+        </div>
+        <div class="ctrl" data-key="rs">
+          <label for="rs">Running speed <small>m/s</small></label>
+          <div class="row"><input type="range" id="rs" min="2" max="11" step="0.1" value="8"><input type="number" min="0" max="11" step="0.1" aria-label="Running speed"></div>
+        </div>
+        <div class="ctrl" data-key="rd">
+          <label for="rd">Running direction <small>degrees from +x</small></label>
+          <div class="row"><input type="range" id="rd" min="-180" max="180" step="1" value="-20"><input type="number" min="-180" max="180" step="1" aria-label="Running direction"></div>
+        </div>
+      </section>
+
+      <section class="panel">
+        <h2><span class="dot" style="background:var(--qb)"></span>Quarterback’s throw</h2>
+        <div class="ctrl" data-key="bs">
+          <label for="bs">Ball speed <small>m/s</small></label>
+          <div class="row"><input type="range" id="bs" min="8" max="30" step="0.5" value="20"><input type="number" min="1" max="30" step="0.5" aria-label="Ball speed"></div>
+        </div>
+        <div class="ctrl" data-key="ba">
+          <label for="ba">Throw angle <small>degrees from +x</small></label>
+          <div class="row"><input type="range" id="ba" min="-90" max="90" step="0.1" value="20"><input type="number" min="-180" max="180" step="0.1" aria-label="Throw angle"></div>
+        </div>
+        <div class="ctrl" data-key="tr">
+          <label for="tr">Release time <small>s after snap</small></label>
+          <div class="row"><input type="range" id="tr" min="0" max="4" step="0.1" value="1.5"><input type="number" min="0" max="6" step="0.1" aria-label="Release time"></div>
+        </div>
+      </section>
+
+      <section class="panel">
+        <h2>Show on field</h2>
+        <div class="toggles">
+          <label><input type="checkbox" id="tVec" checked>Velocity vectors</label>
+          <label><input type="checkbox" id="tComp">Vector components</label>
+          <label><input type="checkbox" id="tTrail" checked>Motion trails</label>
+          <label><input type="checkbox" id="tPath" checked>Planned paths</label>
+          <label><input type="checkbox" id="tGrid">Coordinate grid</label>
+          <label><input type="checkbox" id="tHint">Answer key</label>
+        </div>
+        <div class="hint-box" id="hintBox"></div>
+      </section>
+    </aside>
+  </div>
+
+  <div class="lower">
+    <section class="panel">
+      <div class="panel-head">
+        <h2>Data table <small style="font-family:Barlow,sans-serif;font-weight:400;font-size:14px;color:var(--muted)">every 0.25 s</small></h2>
+        <button id="csvBtn" disabled>Download CSV</button>
+      </div>
+      <div class="table-wrap">
+        <table>
+          <thead><tr><th>t (s)</th><th>ball x</th><th>ball y</th><th>WR x</th><th>WR y</th><th>gap (m)</th></tr></thead>
+          <tbody id="tbody"></tbody>
+        </table>
+        <div class="empty" id="emptyMsg">Snap the ball to start collecting data.</div>
+      </div>
+    </section>
+
+    <section class="panel">
+      <h2>Challenges</h2>
+      <ol class="challenges">
+        <li>With the default settings, find the receiver’s position at the moment of release. Then calculate the throw angle that completes the pass. Test your answer.</li>
+        <li>Set the running direction to 0° (a straight “go” route). How does the required throw angle change if the QB releases the ball 1 s later?</li>
+        <li>Slow the ball down to 9 m/s and make the receiver run directly away at 10 m/s. Can the pass ever be completed? Explain using relative velocity.</li>
+        <li>Turn on vector components. Show that the ball’s x- and y-motions are independent and each has constant velocity.</li>
+      </ol>
+      <p class="note">Top-down view: x points downfield, y points across the field, and angles are measured counterclockwise from +x. Air resistance and the ball’s vertical arc are ignored. Shortcuts: <kbd>Space</kbd> snap or pause, <kbd>R</kbd> reset.</p>
+    </section>
+  </div>
+</div>
+
+<script>
+(function(){
+  const $ = id => document.getElementById(id);
+  const canvas = $('field'), ctx = canvas.getContext('2d');
+  const X0 = -8, X1 = 52, Y0 = -22, Y1 = 22;   // view window in metres
+  const CATCH_R = 1.0, SAMPLE = 0.25, T_MAX = 15;
+  const keys = ['rx','ry','rs','rd','bs','ba','tr'];
+
+  let p = {}, t = 0, running = false, result = null, catchT = null;
+  let speed = 1, lastFrame = null, samples = [], minGap = Infinity, minGapT = null;
+  let W = 0, H = 0, S = 1, dpr = 1;
+
+  // ---------- parameters ----------
+  function readParams(){
+    const v = k => parseFloat($(k).value);
+    p = { rx:v('rx'), ry:v('ry'), rs:v('rs'), rd:v('rd')*Math.PI/180,
+          bs:v('bs'), ba:v('ba')*Math.PI/180, tr:v('tr') };
+  }
+  keys.forEach(k => {
+    const range = $(k), num = range.parentElement.querySelector('input[type=number]');
+    num.value = range.value;
+    range.addEventListener('input', () => { num.value = range.value; changed(); });
+    num.addEventListener('change', () => {
+      let val = parseFloat(num.value);
+      if (isNaN(val)) val = parseFloat(range.value);
+      val = Math.min(parseFloat(num.max), Math.max(parseFloat(num.min), val));
+      num.value = val;
+      // widen slider range if needed so it can display the typed value
+      if (val < parseFloat(range.min)) range.min = val;
+      if (val > parseFloat(range.max)) range.max = val;
+      range.value = val; changed();
+    });
+  });
+  function setParam(k, val){
+    const range = $(k), num = range.parentElement.querySelector('input[type=number]');
+    range.value = val; num.value = val;
+  }
+  function changed(){ readParams(); reset(); }
+
+  // ---------- kinematics ----------
+  const wrVel = () => ({ x:p.rs*Math.cos(p.rd), y:p.rs*Math.sin(p.rd) });
+  const ballVel = () => ({ x:p.bs*Math.cos(p.ba), y:p.bs*Math.sin(p.ba) });
+  function wrPos(time){ const v = wrVel(); return { x:p.rx + v.x*time, y:p.ry + v.y*time }; }
+  function ballPos(time){
+    if (time <= p.tr) return { x:0, y:0 };
+    const v = ballVel(), tau = time - p.tr; return { x:v.x*tau, y:v.y*tau };
+  }
+  const dist = (a,b) => Math.hypot(a.x-b.x, a.y-b.y);
+
+  // intercept angle: |P + v*tau| = s*tau, P = receiver position at release
+  function solveIntercept(){
+    const v = wrVel(), P = wrPos(p.tr), s = p.bs;
+    const a = v.x*v.x + v.y*v.y - s*s, b = 2*(P.x*v.x + P.y*v.y), c = P.x*P.x + P.y*P.y;
+    let tau = null;
+    if (Math.abs(a) < 1e-9){ if (b < 0) tau = -c/b; }
+    else {
+      const disc = b*b - 4*a*c;
+      if (disc >= 0){
+        const r1 = (-b - Math.sqrt(disc))/(2*a), r2 = (-b + Math.sqrt(disc))/(2*a);
+        const pos = [r1, r2].filter(r => r > 1e-6).sort((m,n) => m-n);
+        if (pos.length) tau = pos[0];
+      }
+    }
+    if (tau === null) return null;
+    const C = { x:P.x + v.x*tau, y:P.y + v.y*tau };
+    return { tau, C, P, angle: Math.atan2(C.y, C.x)*180/Math.PI, tCatch: p.tr + tau };
+  }
+
+  // closest approach of the thrown ball to the receiver (analytic)
+  function closestApproach(){
+    const P = wrPos(p.tr), vb = ballVel(), vw = wrVel();
+    const D0 = { x:-P.x, y:-P.y }, Dv = { x:vb.x - vw.x, y:vb.y - vw.y };
+    const dv2 = Dv.x*Dv.x + Dv.y*Dv.y;
+    let tau = dv2 > 0 ? -(D0.x*Dv.x + D0.y*Dv.y)/dv2 : 0;
+    if (tau < 0) tau = 0;
+    return { tau, gap: Math.hypot(D0.x + Dv.x*tau, D0.y + Dv.y*tau) };
+  }
+
+  // first time in [t0,t1] that the ball comes within CATCH_R of the receiver
+  function catchTimeIn(t0, t1){
+    const ta = Math.max(t0, p.tr);
+    if (t1 <= p.tr || ta > t1) return null;
+    const B = ballPos(ta), R = wrPos(ta), vb = ballVel(), vw = wrVel();
+    const D = { x:B.x - R.x, y:B.y - R.y }, Dv = { x:vb.x - vw.x, y:vb.y - vw.y };
+    const c = D.x*D.x + D.y*D.y - CATCH_R*CATCH_R;
+    if (c <= 0) return ta;
+    const a = Dv.x*Dv.x + Dv.y*Dv.y, b = 2*(D.x*Dv.x + D.y*Dv.y);
+    if (a < 1e-12) return null;
+    const disc = b*b - 4*a*c; if (disc < 0) return null;
+    const r = (-b - Math.sqrt(disc))/(2*a);
+    return (r >= 0 && r <= t1 - ta) ? ta + r : null;
+  }
+
+  // ---------- simulation control ----------
+  function reset(){
+    running = false; t = 0; result = null; catchT = null; lastFrame = null;
+    samples = []; minGap = Infinity; minGapT = null;
+    $('tbody').innerHTML = ''; $('emptyMsg').style.display = 'block'; $('csvBtn').disabled = true;
+    hideBanner(); updateButtons(); updateHint(); render();
+  }
+  function advance(dt){
+    if (result) return;
+    const t0 = t, t1 = t + dt;
+    const ct = catchTimeIn(t0, t1);
+    if (ct !== null){ t = ct; finish('catch'); return; }
+    t = t1;
+    if (t > p.tr){
+      const g = dist(ballPos(t), wrPos(t));
+      if (g < minGap){ minGap = g; minGapT = t; }
+      const b = ballPos(t);
+      if (b.x > X1 + 2 || b.x < X0 - 2 || b.y > Y1 + 2 || b.y < Y0 - 2 || t > T_MAX) { finish('miss'); return; }
+    } else if (t > T_MAX) { finish('miss'); return; }
+    recordSamples();
+  }
+  function finish(kind){
+    running = false; result = kind; recordSamples(true);
+    if (kind === 'catch'){
+      catchT = t;
+      const c = wrPos(t);
+      showBanner(`Caught at t = ${t.toFixed(2)} s at (${c.x.toFixed(1)}, ${c.y.toFixed(1)}) m`, 'good');
+    } else {
+      const ca = closestApproach();
+      const tb = p.tr + ca.tau, B = ballPos(tb), R = wrPos(tb), v = wrVel(), sp = Math.hypot(v.x, v.y);
+      let where = '';
+      if (sp > 0){
+        const ahead = ((B.x-R.x)*v.x + (B.y-R.y)*v.y)/sp;
+        where = ahead > 0 ? ', ball went in front of him' : ', ball went behind him';
+      }
+      showBanner(`Incomplete: missed by ${ca.gap.toFixed(1)} m${where}`, 'bad');
+    }
+    updateButtons();
+  }
+  function recordSamples(final){
+    const tb = $('tbody');
+    let k = samples.length;
+    while (k*SAMPLE <= t + 1e-9){ pushRow(k*SAMPLE); k++; }
+    if (final && (samples.length === 0 || Math.abs(samples[samples.length-1][0] - t) > 1e-6)) pushRow(t);
+    function pushRow(time){
+      const B = ballPos(time), R = wrPos(time), g = dist(B, R);
+      samples.push([time, B.x, B.y, R.x, R.y, g]);
+      const tr = document.createElement('tr');
+      tr.innerHTML = samples[samples.length-1].map((v,i) => `<td>${v.toFixed(i===0?2:2)}</td>`).join('');
+      tb.appendChild(tr);
+    }
+    if (samples.length){ $('emptyMsg').style.display = 'none'; $('csvBtn').disabled = false; }
+    const wrap = tb.closest('.table-wrap'); wrap.scrollTop = wrap.scrollHeight;
+  }
+
+  function loop(ts){
+    if (!running) return;
+    if (lastFrame === null) lastFrame = ts;
+    const dt = Math.min(0.05, (ts - lastFrame)/1000) * speed;
+    lastFrame = ts;
+    advance(dt); render();
+    if (running) requestAnimationFrame(loop);
+  }
+  function play(){
+    if (result) reset();
+    running = !running; lastFrame = null; updateButtons();
+    if (running) requestAnimationFrame(loop);
+  }
+  function updateButtons(){
+    const b = $('playBtn');
+    b.textContent = running ? 'Pause' : (result ? 'Run again' : (t > 0 ? 'Resume' : 'Snap ball'));
+    $('stepBtn').disabled = running || !!result;
+  }
+
+  // ---------- banner & hint ----------
+  function showBanner(text, kind){ const b = $('banner'); b.textContent = text; b.className = 'banner show ' + kind; }
+  function hideBanner(){ $('banner').className = 'banner'; }
+  function updateHint(){
+    const box = $('hintBox');
+    if (!$('tHint').checked){ box.className = 'hint-box'; return; }
+    box.className = 'hint-box show';
+    const s = solveIntercept();
+    if (!s){ box.innerHTML = '<strong>No throw angle works.</strong> At this ball speed the receiver outruns the ball. Throw faster, release sooner, or change the route.'; return; }
+    box.innerHTML = `Receiver at release: <strong>(${s.P.x.toFixed(2)}, ${s.P.y.toFixed(2)}) m</strong><br>
+      Ball flight time: <strong>${s.tau.toFixed(2)} s</strong><br>
+      Catch point: <strong>(${s.C.x.toFixed(2)}, ${s.C.y.toFixed(2)}) m</strong><br>
+      Throw angle needed: <strong>${s.angle.toFixed(1)}°</strong><br>
+      <button id="useAngle">Use ${s.angle.toFixed(1)}°</button>`;
+    $('useAngle').onclick = () => {
+      const a = Math.round(s.angle*10)/10, r = $('ba');
+      if (a < parseFloat(r.min)) r.min = a; if (a > parseFloat(r.max)) r.max = a;
+      setParam('ba', a); changed();
+    };
+  }
+
+  // ---------- drawing ----------
+  function css(name){ return getComputedStyle(document.documentElement).getPropertyValue(name).trim(); }
+  const toX = x => (x - X0)*S, toY = y => (Y1 - y)*S;
+
+  function resize(){
+    dpr = window.devicePixelRatio || 1;
+    const card = canvas.parentElement, aspect = (X1-X0)/(Y1-Y0);
+    const colW = card.parentElement.clientWidth;
+    const top = card.getBoundingClientRect().top + window.scrollY;
+    // leave room for the playback buttons and readouts under the field
+    const below = document.querySelector('.transport').offsetHeight + document.querySelector('.readouts').offsetHeight + 40;
+    const sideBySide = window.innerWidth > 760;
+    const maxH = sideBySide ? Math.max(240, window.innerHeight - top - below) : Infinity;
+    W = Math.min(colW, maxH*aspect); H = W/aspect;
+    card.style.width = W + 'px';
+    canvas.width = Math.round(W*dpr); canvas.height = Math.round(H*dpr);
+    canvas.style.height = H + 'px';
+    S = W/(X1-X0); render();
+  }
+
+  function arrow(x1, y1, x2, y2, color, width){
+    const ang = Math.atan2(y2-y1, x2-x1), len = Math.hypot(x2-x1, y2-y1);
+    if (len < 2) return;
+    const head = Math.min(12, len*0.45);
+    ctx.strokeStyle = color; ctx.fillStyle = color; ctx.lineWidth = width; ctx.lineCap = 'round';
+    ctx.beginPath(); ctx.moveTo(x1, y1);
+    ctx.lineTo(x2 - head*0.7*Math.cos(ang), y2 - head*0.7*Math.sin(ang)); ctx.stroke();
+    ctx.beginPath(); ctx.moveTo(x2, y2);
+    ctx.lineTo(x2 - head*Math.cos(ang - 0.42), y2 - head*Math.sin(ang - 0.42));
+    ctx.lineTo(x2 - head*Math.cos(ang + 0.42), y2 - head*Math.sin(ang + 0.42));
+    ctx.closePath(); ctx.fill();
+  }
+  function label(text, x, y, color, align, size, bg){
+    ctx.font = `600 ${size||13}px Barlow, "Segoe UI", sans-serif`;
+    ctx.textAlign = align || 'center'; ctx.textBaseline = 'middle';
+    if (bg){
+      const w = ctx.measureText(text).width + 10, h = (size||13) + 6;
+      let lx = align === 'left' ? x - 5 : align === 'right' ? x - w + 5 : x - w/2;
+      ctx.fillStyle = bg; ctx.beginPath(); ctx.roundRect ? ctx.roundRect(lx, y - h/2, w, h, 5) : ctx.rect(lx, y - h/2, w, h); ctx.fill();
+    }
+    ctx.fillStyle = color; ctx.fillText(text, x, y);
+  }
+
+  function render(){
+    if (!W) return;
+    ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+    const turf1 = css('--turf1'), turf2 = css('--turf2'), chalk = css('--chalk');
+    const cQB = css('--qb'), cWR = css('--wr'), cBall = css('--ball'), cVB = css('--vball'), cVW = css('--vwr'), cScrim = css('--scrim');
+    const dark = 'rgba(0,0,0,.55)';
+
+    // turf stripes every 5 m
+    for (let x = X0; x < X1; x += 5){
+      ctx.fillStyle = (Math.round((x - X0)/5) % 2) ? turf2 : turf1;
+      ctx.fillRect(toX(x), 0, 5*S + 1, H);
+    }
+    // optional grid every 1 m
+    if ($('tGrid').checked){
+      ctx.strokeStyle = 'rgba(255,255,255,.12)'; ctx.lineWidth = 1;
+      for (let x = Math.ceil(X0); x <= X1; x++){ ctx.beginPath(); ctx.moveTo(toX(x), 0); ctx.lineTo(toX(x), H); ctx.stroke(); }
+      for (let y = Math.ceil(Y0); y <= Y1; y++){ ctx.beginPath(); ctx.moveTo(0, toY(y)); ctx.lineTo(W, toY(y)); ctx.stroke(); }
+      ctx.strokeStyle = 'rgba(255,255,255,.35)';
+      ctx.beginPath(); ctx.moveTo(0, toY(0)); ctx.lineTo(W, toY(0)); ctx.stroke();
+      for (let y = -20; y <= 20; y += 5){ if (y) label(`${y}`, toX(X0) + 6, toY(y), 'rgba(255,255,255,.7)', 'left', 11); }
+    }
+    // yard lines every 5 m with labels
+    ctx.lineWidth = 2;
+    for (let x = -5; x <= 50; x += 5){
+      ctx.strokeStyle = x === 0 ? cScrim : 'rgba(243,247,241,.75)';
+      ctx.lineWidth = x === 0 ? 3 : (x % 10 === 0 ? 2 : 1.2);
+      ctx.beginPath(); ctx.moveTo(toX(x), 0); ctx.lineTo(toX(x), H); ctx.stroke();
+      if (x % 10 === 0 && x > 0){
+        label(`${x} m`, toX(x), H - 14, chalk, 'center', 13);
+        label(`${x} m`, toX(x), 14, chalk, 'center', 13);
+      }
+    }
+    // hash marks
+    ctx.strokeStyle = 'rgba(243,247,241,.6)'; ctx.lineWidth = 1.2;
+    for (let x = -7; x <= 51; x += 1){
+      for (const y of [-6, 6]){ ctx.beginPath(); ctx.moveTo(toX(x), toY(y) - 4); ctx.lineTo(toX(x), toY(y) + 4); ctx.stroke(); }
+    }
+    label('line of scrimmage (x = 0)', toX(0) + 6, H - 14, chalk, 'left', 12, 'rgba(0,0,0,.25)');
+    // axes key
+    const ax = toX(X0) + 18, ay = toY(Y0) - 48;
+    arrow(ax, ay, ax + 40, ay, chalk, 2); label('+x', ax + 50, ay, chalk, 'left', 12);
+    arrow(ax, ay, ax, ay - 40, chalk, 2); label('+y', ax, ay - 50, chalk, 'center', 12);
+
+    const vW = wrVel(), vB = ballVel(), R0 = wrPos(0);
+
+    // planned paths
+    if ($('tPath').checked){
+      ctx.setLineDash([7, 7]); ctx.lineWidth = 2;
+      ctx.strokeStyle = 'rgba(230,164,23,.85)';
+      const Rend = wrPos(T_MAX);
+      ctx.beginPath(); ctx.moveTo(toX(R0.x), toY(R0.y)); ctx.lineTo(toX(Rend.x), toY(Rend.y)); ctx.stroke();
+      ctx.strokeStyle = 'rgba(224,65,47,.85)';
+      ctx.beginPath(); ctx.moveTo(toX(0), toY(0));
+      ctx.lineTo(toX(80*Math.cos(p.ba)), toY(80*Math.sin(p.ba))); ctx.stroke();
+      ctx.setLineDash([]);
+      // receiver position at release
+      if (p.tr > 0){
+        const Pr = wrPos(p.tr);
+        ctx.strokeStyle = cWR; ctx.lineWidth = 2;
+        ctx.beginPath(); ctx.arc(toX(Pr.x), toY(Pr.y), 0.6*S, 0, Math.PI*2); ctx.stroke();
+        label(`WR at release, t = ${p.tr.toFixed(1)} s`, toX(Pr.x) + 0.9*S, toY(Pr.y) - 0.9*S, '#fff', 'left', 11, dark);
+      }
+    }
+
+    // answer key
+    if ($('tHint').checked){
+      const s = solveIntercept();
+      if (s){
+        ctx.strokeStyle = 'rgba(255,255,255,.75)'; ctx.lineWidth = 1.5; ctx.setLineDash([2, 5]);
+        ctx.beginPath(); ctx.moveTo(toX(0), toY(0)); ctx.lineTo(toX(s.C.x), toY(s.C.y)); ctx.stroke(); ctx.setLineDash([]);
+        const cx = toX(s.C.x), cy = toY(s.C.y), k = 0.7*S;
+        ctx.strokeStyle = '#fff'; ctx.lineWidth = 2.5;
+        ctx.beginPath(); ctx.moveTo(cx-k, cy-k); ctx.lineTo(cx+k, cy+k); ctx.moveTo(cx+k, cy-k); ctx.lineTo(cx-k, cy+k); ctx.stroke();
+        label(`catch point, ${s.angle.toFixed(1)}°`, cx + k + 6, cy + k + 8, '#fff', 'left', 12, dark);
+      }
+    }
+
+    // trails
+    if ($('tTrail').checked && t > 0){
+      ctx.fillStyle = 'rgba(255,214,92,.9)';
+      for (let tt = 0; tt <= t; tt += 0.25){ const q = wrPos(tt); ctx.beginPath(); ctx.arc(toX(q.x), toY(q.y), 2.4, 0, Math.PI*2); ctx.fill(); }
+      if (t > p.tr){
+        ctx.fillStyle = 'rgba(255,255,255,.9)';
+        for (let tt = p.tr; tt <= t; tt += 0.1){ const q = ballPos(tt); ctx.beginPath(); ctx.arc(toX(q.x), toY(q.y), 1.8, 0, Math.PI*2); ctx.fill(); }
+      }
+    }
+
+    const R = wrPos(t), B = ballPos(t);
+    const inAir = t > p.tr && result !== 'catch';
+
+    // catch zone ring
+    if (!result || result === 'catch'){
+      ctx.strokeStyle = 'rgba(255,255,255,.35)'; ctx.lineWidth = 1; ctx.setLineDash([3, 3]);
+      ctx.beginPath(); ctx.arc(toX(R.x), toY(R.y), CATCH_R*S, 0, Math.PI*2); ctx.stroke(); ctx.setLineDash([]);
+    }
+
+    // players
+    function player(pos, color, text){
+      const r = Math.max(9, 0.85*S);
+      ctx.fillStyle = 'rgba(0,0,0,.25)'; ctx.beginPath(); ctx.arc(toX(pos.x) + 2, toY(pos.y) + 3, r, 0, Math.PI*2); ctx.fill();
+      ctx.fillStyle = color; ctx.strokeStyle = '#fff'; ctx.lineWidth = 2.5;
+      ctx.beginPath(); ctx.arc(toX(pos.x), toY(pos.y), r, 0, Math.PI*2); ctx.fill(); ctx.stroke();
+      ctx.font = `700 ${Math.round(r*0.95)}px "Barlow Condensed", "Arial Narrow", sans-serif`;
+      ctx.fillStyle = color === cWR ? '#3a2600' : '#fff'; ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+      ctx.fillText(text, toX(pos.x), toY(pos.y) + 1);
+    }
+    player({x:0, y:0}, cQB, 'QB');
+    player(R, cWR, 'WR');
+
+    // football
+    const bx = toX(B.x), by = toY(B.y);
+    const showBall = t > p.tr || true;
+    if (showBall){
+      const L = Math.max(8, 0.55*S), Wd = L*0.6;
+      ctx.save();
+      const drawAt = (result === 'catch') ? { x:toX(R.x) + 0.4*S, y:toY(R.y) - 0.4*S } : (t <= p.tr ? { x:toX(0) + 0.9*S, y:toY(0) - 0.6*S } : { x:bx, y:by });
+      ctx.translate(drawAt.x, drawAt.y); ctx.rotate(-p.ba);
+      ctx.fillStyle = cBall; ctx.strokeStyle = '#fff'; ctx.lineWidth = 1.5;
+      ctx.beginPath(); ctx.ellipse(0, 0, L, Wd, 0, 0, Math.PI*2); ctx.fill(); ctx.stroke();
+      ctx.strokeStyle = '#fff'; ctx.lineWidth = 1.2;
+      ctx.beginPath(); ctx.moveTo(-L*0.35, 0); ctx.lineTo(L*0.35, 0); ctx.stroke();
+      for (let i = -2; i <= 2; i++){ ctx.beginPath(); ctx.moveTo(i*L*0.14, -Wd*0.3); ctx.lineTo(i*L*0.14, Wd*0.3); ctx.stroke(); }
+      ctx.restore();
+    }
+
+    // velocity vectors (1 m/s drawn as 0.6 m)
+    const VS = 0.6*S;
+    if ($('tVec').checked){
+      if (t < T_MAX && result !== 'catch' || result === 'catch'){
+        if (p.rs > 0){
+          const ex = toX(R.x) + vW.x*VS, ey = toY(R.y) - vW.y*VS;
+          arrow(toX(R.x), toY(R.y), ex, ey, cVW, 3);
+          label(`v = ${p.rs.toFixed(1)} m/s`, ex + 8*Math.sign(vW.x || 1), ey, '#fff', vW.x >= 0 ? 'left' : 'right', 12, dark);
+        }
+        if (inAir){
+          const ex = bx + vB.x*VS, ey = by - vB.y*VS;
+          if ($('tComp').checked){
+            ctx.setLineDash([5, 4]);
+            arrow(bx, by, ex, by, 'rgba(255,255,255,.9)', 2);
+            arrow(ex, by, ex, ey, 'rgba(255,255,255,.9)', 2);
+            ctx.setLineDash([]);
+            label(`vx = ${vB.x.toFixed(1)}`, (bx + ex)/2, by + (vB.y >= 0 ? 12 : -12), '#fff', 'center', 11, dark);
+            label(`vy = ${vB.y.toFixed(1)}`, ex + 6, (by + ey)/2, '#fff', 'left', 11, dark);
+          }
+          arrow(bx, by, ex, ey, cVB, 3.5);
+          label(`v = ${p.bs.toFixed(1)} m/s`, ex + 8, ey - 10, '#fff', 'left', 12, dark);
+        } else if (t <= p.tr){
+          // show the throw that is coming
+          const ox = toX(0), oy = toY(0);
+          ctx.globalAlpha = 0.55; arrow(ox, oy, ox + vB.x*VS, oy - vB.y*VS, cVB, 3); ctx.globalAlpha = 1;
+          label(`θ = ${(p.ba*180/Math.PI).toFixed(1)}°`, ox + vB.x*VS + 8, oy - vB.y*VS, '#fff', 'left', 12, dark);
+        }
+        if ($('tComp').checked && p.rs > 0){
+          const sx = toX(R.x), sy = toY(R.y), ex = sx + vW.x*VS, ey = sy - vW.y*VS;
+          ctx.setLineDash([5, 4]);
+          arrow(sx, sy, ex, sy, 'rgba(255,214,92,.9)', 2);
+          arrow(ex, sy, ex, ey, 'rgba(255,214,92,.9)', 2);
+          ctx.setLineDash([]);
+        }
+      }
+    }
+
+    updateReadouts(R, B);
+  }
+
+  function updateReadouts(R, B){
+    $('roT').textContent = `${t.toFixed(2)} s`;
+    let phase = 'Pre-snap';
+    if (result === 'catch') phase = 'Pass complete';
+    else if (result === 'miss') phase = 'Incomplete';
+    else if (t > 0 && t <= p.tr) phase = 'QB holding the ball';
+    else if (t > p.tr) phase = 'Ball in the air';
+    $('roPhase').textContent = phase;
+    const vB = (t > p.tr && result !== 'catch') ? ballVel() : { x:0, y:0 };
+    const vW = (result === 'catch') ? wrVel() : wrVel();
+    const Bshow = result === 'catch' ? R : B;
+    $('roBx').textContent = Bshow.x.toFixed(1); $('roBy').textContent = Bshow.y.toFixed(1);
+    $('roBvx').textContent = vB.x.toFixed(1); $('roBvy').textContent = vB.y.toFixed(1);
+    $('roWx').textContent = R.x.toFixed(1); $('roWy').textContent = R.y.toFixed(1);
+    $('roWvx').textContent = vW.x.toFixed(1); $('roWvy').textContent = vW.y.toFixed(1);
+    if (t > p.tr){
+      $('roGap').textContent = result === 'catch' ? '0.0 m' : `${dist(B, R).toFixed(1)} m`;
+      $('roMin').innerHTML = isFinite(minGap) ? `<span>Closest so far:</span> ${Math.min(minGap, dist(B,R)).toFixed(1)} m` : '<span>Catch zone: within 1.0 m</span>';
+    } else {
+      $('roGap').textContent = '—';
+      $('roMin').innerHTML = '<span>Catch zone: within 1.0 m</span>';
+    }
+  }
+
+  // ---------- events ----------
+  $('playBtn').onclick = play;
+  $('resetBtn').onclick = reset;
+  $('stepBtn').onclick = () => { if (!result){ advance(0.1); render(); updateButtons(); } };
+  document.querySelectorAll('.seg button').forEach(b => b.onclick = () => {
+    speed = parseFloat(b.dataset.speed);
+    document.querySelectorAll('.seg button').forEach(x => x.setAttribute('aria-pressed', x === b ? 'true' : 'false'));
+  });
+  ['tVec','tComp','tTrail','tPath','tGrid'].forEach(id => $(id).onchange = render);
+  $('tHint').onchange = () => { updateHint(); render(); };
+  $('csvBtn').onclick = () => {
+    const head = 't_s,ball_x_m,ball_y_m,wr_x_m,wr_y_m,gap_m\n';
+    const csv = head + samples.map(r => r.map(v => v.toFixed(3)).join(',')).join('\n');
+    const url = URL.createObjectURL(new Blob([csv], { type:'text/csv' }));
+    const a = document.createElement('a'); a.href = url; a.download = 'pass-play-data.csv';
+    document.body.appendChild(a); a.click(); a.remove(); setTimeout(() => URL.revokeObjectURL(url), 1000);
+  };
+  document.addEventListener('keydown', e => {
+    if (e.target.tagName === 'INPUT' && e.target.type === 'number') return;
+    if (e.code === 'Space'){ e.preventDefault(); play(); }
+    else if (e.key === 'r' || e.key === 'R'){ reset(); }
+  });
+  window.addEventListener('resize', resize);
+  window.matchMedia('(prefers-color-scheme: dark)').addEventListener?.('change', render);
+  if (document.fonts) document.fonts.ready.then(render);
+
+  readParams(); resize(); reset();
+})();
+</script>
+</body>
+</html>

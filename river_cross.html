@@ -1,0 +1,220 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>River crossing: adding velocity vectors</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Atkinson+Hyperlegible:ital,wght@0,400;0,700;1,400&display=swap" rel="stylesheet">
+<style>
+:root{
+  --paper:#F7F9F6; --grid:#DFE7E2; --ink:#1E2940; --ink-soft:#56607A;
+  --water:#CFE5EC; --water-line:#9CC6D3; --bank:#E7ECE4; --panel:#FFFFFF;
+  --boat:#C8322A; --current:#3B4CCA; --result:#2E7D32; --focus:#3B4CCA;
+  box-sizing:border-box;
+  padding-top:env(safe-area-inset-top,0px);
+  padding-bottom:env(safe-area-inset-bottom,0px);
+}
+@media (prefers-color-scheme: dark){
+  :root:not([data-theme="light"]){
+    color-scheme:dark;
+    --paper:#141A22; --grid:#1F2833; --ink:#E6EAF2; --ink-soft:#9BA6BA;
+    --water:#173845; --water-line:#2A5A6A; --bank:#1C232C; --panel:#1A212B;
+    --boat:#FF7A6E; --current:#8C97FF; --result:#6FCF77; --focus:#8C97FF;
+  }
+}
+:root[data-theme="dark"]{
+  color-scheme:dark;
+  --paper:#141A22; --grid:#1F2833; --ink:#E6EAF2; --ink-soft:#9BA6BA;
+  --water:#173845; --water-line:#2A5A6A; --bank:#1C232C; --panel:#1A212B;
+  --boat:#FF7A6E; --current:#8C97FF; --result:#6FCF77; --focus:#8C97FF;
+}
+*,*::before,*::after{box-sizing:inherit}
+html{scroll-padding-top:env(safe-area-inset-top,0px)}
+body{
+  margin:0; color:var(--ink); background:var(--paper);
+  background-image:linear-gradient(var(--grid) 1px,transparent 1px),linear-gradient(90deg,var(--grid) 1px,transparent 1px);
+  background-size:24px 24px;
+  font-family:"Atkinson Hyperlegible",system-ui,-apple-system,"Segoe UI",Roboto,sans-serif;
+  font-size:18px; line-height:1.55;
+}
+main{max-width:920px;margin:0 auto;padding:2.5rem 1.25rem 3rem}
+h1{font-size:2.4rem;line-height:1.1;margin:0 0 .5rem;font-weight:700;letter-spacing:-.01em}
+h2{font-size:1.35rem;margin:0 0 .75rem;font-weight:700}
+.lede{max-width:62ch;margin:0 0 1.75rem;color:var(--ink-soft)}
+.sim{background:var(--panel);border:1px solid var(--water-line);border-radius:14px;padding:1rem;margin-bottom:1.5rem}
+.svgwrap{overflow-x:auto}
+svg{display:block;width:100%;height:auto;min-width:520px}
+svg text{font-family:inherit;font-size:15px;fill:var(--ink)}
+svg .soft{fill:var(--ink-soft)}
+.controls{display:grid;grid-template-columns:auto minmax(0,1fr) 5.5rem;gap:.6rem 1rem;align-items:center;margin:1rem .25rem .5rem}
+.controls label{font-weight:700}
+.controls output{font-variant-numeric:tabular-nums;text-align:right}
+input[type=range]{width:100%;accent-color:var(--current)}
+.actions{display:flex;gap:.75rem;flex-wrap:wrap;margin:.75rem .25rem .25rem}
+button{
+  font:inherit;font-weight:700;color:var(--ink);background:transparent;
+  border:2px solid var(--ink);border-radius:999px;padding:.45rem 1.2rem;cursor:pointer;
+}
+button.go{background:var(--ink);color:var(--paper)}
+button:focus-visible,input:focus-visible{outline:3px solid var(--focus);outline-offset:3px}
+.cols{display:grid;grid-template-columns:repeat(auto-fit,minmax(min(100%,380px),1fr));gap:1.5rem}
+.card{background:var(--panel);border:1px solid var(--grid);border-radius:14px;padding:1.25rem 1.4rem}
+.math p{margin:.15rem 0 .9rem;font-variant-numeric:tabular-nums}
+.math .eq{font-size:1.05rem}
+.math .what{font-size:.95rem;color:var(--ink-soft);margin-bottom:.1rem}
+.b{color:var(--boat);font-weight:700}.c{color:var(--current);font-weight:700}.r{color:var(--result);font-weight:700}
+ol{margin:0;padding-left:1.25rem}
+ol li{margin-bottom:.6rem}
+.clock{font-variant-numeric:tabular-nums}
+footer{margin-top:2rem;color:var(--ink-soft);font-size:.95rem}
+@media (max-width:560px){h1{font-size:1.9rem}.controls{grid-template-columns:1fr 4.5rem}.controls label{grid-column:1/-1;margin-bottom:-.4rem}}
+</style>
+</head>
+<body>
+<main>
+  <h1>River crossing</h1>
+  <p class="lede">A boat aims straight across a river while the current pushes it downstream. Change the sliders, launch the boat, and watch how the two velocities add up.</p>
+
+  <section class="sim" aria-label="Simulator">
+    <div class="svgwrap">
+    <svg viewBox="0 0 800 400" role="img" aria-labelledby="svgT svgD">
+      <title id="svgT">Boat crossing a river</title>
+      <desc id="svgD">The boat’s velocity points straight across, the current’s velocity points downstream, and the resultant velocity points along the boat’s path to the landing point.</desc>
+      <defs>
+        <marker id="ah" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="5" markerHeight="5" orient="auto-start-reverse"><path d="M1 1L9 5L1 9z" fill="context-stroke"/></marker>
+      </defs>
+      <rect x="0" y="20" width="800" height="50" fill="var(--bank)"/>
+      <rect x="0" y="70" width="800" height="260" fill="var(--water)"/>
+      <rect x="0" y="330" width="800" height="60" fill="var(--bank)"/>
+      <line x1="0" y1="70" x2="800" y2="70" stroke="var(--water-line)" stroke-width="2"/>
+      <line x1="0" y1="330" x2="800" y2="330" stroke="var(--water-line)" stroke-width="2"/>
+      <text class="soft" x="770" y="230" text-anchor="end">current flows this way →</text>
+
+      <line id="path" x1="110" y1="330" x2="310" y2="70" stroke="var(--ink-soft)" stroke-width="1.5" stroke-dasharray="6 6"/>
+      <line id="drift" x1="110" y1="84" x2="310" y2="84" stroke="var(--ink-soft)" stroke-width="1"/>
+      <text id="driftLbl" class="soft" x="210" y="104" text-anchor="middle">drift</text>
+
+      <line id="helper" x1="110" y1="230" x2="150" y2="230" stroke="var(--current)" stroke-width="1" stroke-dasharray="4 4"/>
+      <line id="vb" x1="110" y1="330" x2="110" y2="230" stroke="var(--boat)" stroke-width="4" marker-end="url(#ah)"/>
+      <line id="vc" x1="110" y1="330" x2="150" y2="330" stroke="var(--current)" stroke-width="4" marker-end="url(#ah)"/>
+      <line id="vr" x1="110" y1="330" x2="150" y2="230" stroke="var(--result)" stroke-width="4" marker-end="url(#ah)"/>
+      <text id="vbLbl" x="100" y="285" text-anchor="end" style="fill:var(--boat);font-weight:700">v boat</text>
+      <text id="vcLbl" x="130" y="355" text-anchor="middle" style="fill:var(--current);font-weight:700">v current</text>
+      <text id="vrLbl" x="160" y="225" style="fill:var(--result);font-weight:700">v resultant</text>
+
+      <circle cx="110" cy="330" r="5" fill="var(--ink)"/>
+      <text x="100" y="378" text-anchor="end">Start</text>
+      <circle cx="110" cy="70" r="5" fill="none" stroke="var(--ink)" stroke-width="2"/>
+      <text x="100" y="50" text-anchor="end">Aim</text>
+      <circle id="land" cx="310" cy="70" r="7" fill="var(--result)"/>
+      <text id="landLbl" x="320" y="50">Landing</text>
+
+      <g id="boat" transform="translate(110 330)" style="opacity:0">
+        <path d="M0 -16 L8 4 L8 12 L-8 12 L-8 4 Z" fill="var(--ink)"/>
+      </g>
+      <text id="clock" class="clock" x="770" y="378" text-anchor="end"></text>
+    </svg>
+    </div>
+
+    <div class="controls">
+      <label for="w">River width</label><input type="range" id="w" min="20" max="200" step="10" value="100"><output id="wo" for="w">100 m</output>
+      <label for="b">Boat speed</label><input type="range" id="b" min="2" max="8" step="0.5" value="5"><output id="bo" for="b">5 m/s</output>
+      <label for="c">Current speed</label><input type="range" id="c" min="0" max="4" step="0.5" value="2"><output id="co" for="c">2 m/s</output>
+    </div>
+    <div class="actions">
+      <button class="go" id="launch" type="button">Launch boat</button>
+      <button id="reset" type="button">Reset sliders</button>
+    </div>
+  </section>
+
+  <div class="cols">
+    <section class="card math" aria-live="polite">
+      <h2>The math, live</h2>
+      <p class="what">Time to cross uses only the boat’s speed</p>
+      <p class="eq" id="mT"></p>
+      <p class="what">Drift uses the current’s speed and that same time</p>
+      <p class="eq" id="mD"></p>
+      <p class="what">Resultant speed (Pythagorean theorem)</p>
+      <p class="eq" id="mV"></p>
+      <p class="what">Angle of the path from straight across</p>
+      <p class="eq" id="mA"></p>
+    </section>
+    <section class="card">
+      <h2>Try this</h2>
+      <ol>
+        <li>Set the current to 0. Where does the boat land?</li>
+        <li>Double the current speed. What happens to the crossing time? What happens to the drift?</li>
+        <li>Double the boat speed instead. How do the time and drift change now?</li>
+        <li>Launch the boat and watch which way it points. Is its heading the same as its path?</li>
+        <li>Predict the drift for a 150 m river, a 3 m/s boat and a 2 m/s current. Then check it.</li>
+      </ol>
+    </section>
+  </div>
+
+  <footer>Vectors are drawn to scale with each other: a longer arrow means a faster velocity.</footer>
+</main>
+
+<script>
+(function(){
+  var $=function(id){return document.getElementById(id);};
+  var SX=110, SY=330, RIVER=260, TOP=70, K=16;
+  var anim=null;
+  function set(el,a){for(var k in a)el.setAttribute(k,a[k]);}
+  function f(n){return (Math.round(n*10)/10).toString();}
+  function vals(){return {W:+$('w').value, vb:+$('b').value, vc:+$('c').value};}
+
+  function update(){
+    stop();
+    var v=vals(), W=v.W, vb=v.vb, vc=v.vc;
+    $('wo').textContent=W+' m'; $('bo').textContent=vb+' m/s'; $('co').textContent=vc+' m/s';
+    var t=W/vb, d=vc*t, dpx=RIVER*vc/vb, Lx=SX+dpx;
+    set($('path'),{x2:Lx}); set($('land'),{cx:Lx}); set($('landLbl'),{x:Lx+10});
+    set($('drift'),{x2:Lx}); set($('driftLbl'),{x:SX+dpx/2});
+    $('drift').style.opacity=dpx>4?1:0; $('driftLbl').style.opacity=dpx>70?1:0;
+    var by=SY-K*vb, cx=SX+K*vc;
+    set($('vb'),{y2:by}); set($('vc'),{x2:cx}); set($('vr'),{x2:cx,y2:by});
+    set($('helper'),{x1:SX,y1:by,x2:cx,y2:by});
+    set($('vbLbl'),{y:SY-K*vb/2+5}); set($('vcLbl'),{x:SX+Math.max(K*vc/2,38)});
+    set($('vrLbl'),{x:cx+10,y:by-6});
+    var show=vc>0?1:0;
+    ['vc','vcLbl','helper'].forEach(function(id){$(id).style.opacity=show;});
+    var ang=Math.atan2(vc,vb)*180/Math.PI;
+    $('mT').innerHTML='t = width ÷ <span class="b">v<sub>boat</sub></span> = '+W+' m ÷ '+vb+' m/s = <strong>'+f(t)+' s</strong>';
+    $('mD').innerHTML='drift = <span class="c">v<sub>current</sub></span> × t = '+vc+' m/s × '+f(t)+' s = <strong>'+f(d)+' m</strong>';
+    $('mV').innerHTML='<span class="r">v</span> = √('+vb+'² + '+vc+'²) = <strong>'+f(Math.hypot(vb,vc))+' m/s</strong>';
+    $('mA').innerHTML='θ = tan⁻¹('+vc+' ÷ '+vb+') = <strong>'+f(ang)+'°</strong>';
+    $('boat').style.opacity=0; $('clock').textContent='';
+  }
+
+  function placeBoat(p,v){
+    var dpx=RIVER*v.vc/v.vb;
+    var x=SX+dpx*p, y=SY-RIVER*p;
+    $('boat').setAttribute('transform','translate('+x+' '+y+')');
+    $('clock').textContent='t = '+f(p*v.W/v.vb)+' s';
+  }
+  function stop(){if(anim){cancelAnimationFrame(anim);anim=null;}}
+  function launch(){
+    stop();
+    var v=vals();
+    $('boat').style.opacity=1;
+    var reduce=window.matchMedia&&window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+    if(reduce){placeBoat(1,v);return;}
+    var dur=3500, t0=null;
+    function step(ts){
+      if(t0===null)t0=ts;
+      var p=Math.min((ts-t0)/dur,1);
+      placeBoat(p,v);
+      if(p<1)anim=requestAnimationFrame(step); else anim=null;
+    }
+    anim=requestAnimationFrame(step);
+  }
+  ['w','b','c'].forEach(function(id){$(id).addEventListener('input',update);});
+  $('launch').addEventListener('click',launch);
+  $('reset').addEventListener('click',function(){$('w').value=100;$('b').value=5;$('c').value=2;update();});
+  update();
+})();
+</script>
+</body>
+</html>
