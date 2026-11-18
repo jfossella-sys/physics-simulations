@@ -1,0 +1,251 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Projectile Lab</title>
+<style>
+:root{--bg:#eef2fb;--card:#fff;--ink:#14213d;--mute:#4a5878;--line:#d5dcee;--acc:#5b2fe0;--accsoft:#e9e2ff;--ball:#e8274b;--vac:#0a7f86;--vx:#1b8a3a;--vy:#c25a00;--sky1:#dff0ff;--sky2:#f7fbff;--ground:#5c8a4d;--grid:#c3d0e8;--tower:#8b97b5;--cmp:#c27803}
+@media(prefers-color-scheme:dark){:root{--bg:#0e1124;--card:#181c38;--ink:#eef1ff;--mute:#a9b3d6;--line:#2c3359;--acc:#a78bfa;--accsoft:#2a2457;--ball:#ff6b87;--vac:#3fd6d6;--vx:#5fe08a;--vy:#ffb066;--sky1:#161b3f;--sky2:#0e1124;--ground:#2f5a3a;--grid:#2c3359;--tower:#59648f;--cmp:#fbbf24}}
+*{box-sizing:border-box}
+body{margin:0;background:var(--bg);color:var(--ink);font:16px/1.5 ui-rounded,"SF Pro Rounded","Nunito","Segoe UI",system-ui,sans-serif}
+header{padding:18px clamp(14px,3vw,32px) 4px}
+h1{margin:0;font-size:clamp(1.6rem,4vw,2.3rem);letter-spacing:-.02em}
+header p{margin:2px 0 0;color:var(--mute);max-width:60ch}
+.app{display:grid;grid-template-columns:minmax(0,1.6fr) minmax(300px,1fr);gap:16px;padding:14px clamp(14px,3vw,32px) 32px}
+@media(max-width:860px){.app{grid-template-columns:1fr}}
+.card{background:var(--card);border:1px solid var(--line);border-radius:18px;padding:14px}
+canvas{width:100%;aspect-ratio:16/10;display:block;border-radius:12px;border:1px solid var(--line)}
+.bar{display:flex;flex-wrap:wrap;gap:10px 14px;align-items:center;margin-top:12px}
+.bar label{display:flex;align-items:center;gap:8px;font-size:.9rem;color:var(--mute)}
+.bar input[type=range]{width:min(180px,36vw)}
+button{font:inherit;font-weight:700;border:2px solid var(--acc);background:var(--card);color:var(--acc);border-radius:999px;padding:8px 18px;cursor:pointer;min-height:44px}
+button.primary{background:var(--acc);color:#fff}
+@media(prefers-color-scheme:dark){button.primary{color:#0e1124}}
+button[aria-pressed=true],button[aria-selected=true]{background:var(--acc);color:#fff}
+@media(prefers-color-scheme:dark){button[aria-pressed=true],button[aria-selected=true]{color:#0e1124}}
+:focus-visible{outline:3px solid var(--ball);outline-offset:2px}
+.grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(110px,1fr));gap:8px;margin-top:12px}
+.stat{background:var(--bg);border-radius:12px;padding:8px 10px}
+.stat span{display:block;font-size:.78rem;color:var(--mute)}
+.stat b{font-size:1.1rem;font-variant-numeric:tabular-nums}
+h2{font-size:1rem;margin:14px 0 0}
+.modes{display:flex;flex-wrap:wrap;gap:8px}
+.modes button{padding:6px 14px;min-height:40px;font-size:.9rem}
+#mdesc{color:var(--mute);margin:10px 0;font-size:.92rem}
+.tabs{display:flex;gap:6px;border-bottom:2px solid var(--line);margin-bottom:10px}
+.tabs button{border-radius:10px 10px 0 0;border-width:0;padding:6px 14px;min-height:40px}
+.row{display:grid;grid-template-columns:1fr auto;gap:2px 8px;margin:10px 0}
+.row input{grid-column:1/3;width:100%;height:28px;accent-color:var(--acc)}
+.row label{font-weight:600}
+.row output{font-variant-numeric:tabular-nums;color:var(--acc);font-weight:700}
+.row.off{opacity:.45}
+select{font:inherit;padding:8px;border-radius:10px;border:2px solid var(--line);background:var(--card);color:var(--ink);min-height:40px}
+.chk{display:flex;gap:10px;align-items:center;margin:10px 0;min-height:40px}
+.chk input{width:22px;height:22px;accent-color:var(--acc)}
+.hint{font-size:.85rem;color:var(--mute);background:var(--accsoft);border-radius:10px;padding:8px 10px}
+#sw{aspect-ratio:2/1;margin-top:6px}
+[hidden]{display:none!important}
+</style>
+</head>
+<body>
+<header>
+<h1>Projectile Lab</h1>
+<p>Pick a launch style, drag the sliders, then hit Launch. Turn on air resistance to see how the real world bends the rules.</p>
+</header>
+<main class="app">
+<section class="card" aria-label="Simulation">
+<canvas id="cv" role="img" aria-label="Projectile path"></canvas>
+<div class="bar">
+<button id="go" class="primary">Launch</button>
+<button id="rs">Reset</button>
+<label>Time <input type="range" id="scrub" min="0" max="1" step="0.01" value="0" aria-label="Scrub through time"></label>
+<label>Playback <input type="range" id="ts" min="0.1" max="2" step="0.1" value="1" aria-label="Playback speed"><output id="o-ts">1x</output></label>
+</div>
+<div class="grid" id="live" aria-label="Live values"></div>
+<h2>Results</h2>
+<div class="grid" id="res"></div>
+<p class="hint" id="sum" aria-live="polite" style="margin-top:12px"></p>
+</section>
+<aside class="card" aria-label="Controls">
+<h2 style="margin-top:0">Launch style</h2>
+<div class="modes" id="modes" role="group" aria-label="Launch style"></div>
+<p id="mdesc"></p>
+<div class="tabs" role="tablist">
+<button role="tab" id="t-launch" aria-selected="true" aria-controls="p-launch">Launch</button>
+<button role="tab" id="t-air" aria-selected="false" aria-controls="p-air">Air and world</button>
+<button role="tab" id="t-exp" aria-selected="false" aria-controls="p-exp">Experiments</button>
+</div>
+<div id="p-launch" role="tabpanel" aria-labelledby="t-launch"></div>
+<div id="p-air" role="tabpanel" aria-labelledby="t-air" hidden>
+<label for="planet" style="font-weight:600">Where are you?</label><br>
+<select id="planet"><option value="9.81">Earth</option><option value="1.62">Moon</option><option value="3.71">Mars</option><option value="24.79">Jupiter</option><option value="">Custom</option></select>
+<div id="air-sliders"></div>
+<label class="chk"><input type="checkbox" id="air"> Air resistance (quadratic drag)</label>
+<div id="drag-sliders"></div>
+<label class="chk"><input type="checkbox" id="vec" checked> Show velocity arrows</label>
+<label class="chk"><input type="checkbox" id="prev" checked> Show predicted path</label>
+<label class="chk"><input type="checkbox" id="ghost" checked> Show no-air path for comparison</label>
+<p class="hint">Drag force = 0.5 x air density x Cd x area x speed squared. Bigger and lighter balls feel it more.</p>
+</div>
+<div id="p-exp" role="tabpanel" aria-labelledby="t-exp" hidden>
+<label for="cmp" style="font-weight:600">Compare with a second launch</label><br>
+<select id="cmp"><option value="">Nothing</option><option value="comp">Complementary angle (90 minus angle)</option><option value="ground">Same launch from the ground</option><option value="dbl">Double the launch speed</option></select>
+<p class="hint" id="cnote" aria-live="polite" style="margin-top:10px"></p>
+<p><button id="best">Try 45 degrees</button></p>
+<h2>Range at every angle (0 to 90)</h2>
+<canvas id="sw" role="img" aria-label="Chart of range versus launch angle"></canvas>
+<p class="hint" style="margin-top:8px">With no air on level ground, 25 and 65 degrees (or 30 and 60) land in the same spot, and 45 goes farthest. Add air or a start height and the best angle shifts below 45.</p>
+<h2>Pick an object</h2>
+<select id="obj" aria-label="Object"><option value="">Custom</option><option value="cotton">Cotton ball</option><option value="pingpong">Ping pong ball</option><option value="marsh">Small marshmallow</option><option value="base">Baseball</option><option value="rock">Heavy rock</option></select>
+<p class="hint" style="margin-top:8px">Choosing one turns on air resistance and sets mass, size and drag. Light and fluffy things get slowed down the most.</p>
+</div>
+</aside>
+</main>
+<script>
+const $=id=>document.getElementById(id);
+const P={x0:0,y0:0,v:20,ang:45,boost:0,tb:0,g:9.81,m:0.5,r:5,cd:0.47,air:false};
+const SL={
+ x0:{l:"Start x",min:0,max:50,step:1,u:"m",p:"p-launch"},
+ y0:{l:"Start height",min:0,max:100,step:1,u:"m",p:"p-launch"},
+ v:{l:"Launch speed",min:0,max:60,step:.5,u:"m/s",p:"p-launch"},
+ ang:{l:"Launch angle",min:-90,max:90,step:1,u:"deg",p:"p-launch"},
+ boost:{l:"Boost acceleration",min:0,max:80,step:1,u:"m/s2",p:"p-launch"},
+ tb:{l:"Boost duration",min:0,max:8,step:.1,u:"s",p:"p-launch"},
+ g:{l:"Gravity",min:.5,max:25,step:.01,u:"m/s2",p:"air-sliders"},
+ m:{l:"Mass",min:.002,max:20,step:.001,u:"kg",p:"drag-sliders"},
+ r:{l:"Radius",min:1,max:30,step:1,u:"cm",p:"drag-sliders"},
+ cd:{l:"Drag coefficient",min:.05,max:1.5,step:.01,u:"",p:"drag-sliders"}};
+const MODES={
+ horiz:{n:"Horizontal launch",d:"Roll off a cliff at a flat angle. Gravity only pulls down, so sideways speed stays put (in a vacuum).",set:{x0:0,y0:40,v:15,ang:0,boost:0,tb:0},show:["x0","y0","v"]},
+ drop:{n:"Free fall",d:"Just let go. Start speed is zero, so it falls straight down. Try changing gravity!",set:{x0:0,y0:50,v:0,ang:0,boost:0,tb:0},show:["x0","y0"]},
+ angled:{n:"Angled launch",d:"The classic cannon shot. Around 45 degrees gives max range from flat ground.",set:{x0:0,y0:0,v:25,ang:45,boost:0,tb:0},show:["x0","y0","v","ang"]},
+ boost:{n:"Boost then fall",d:"A rocket burns for a bit, then cuts out and it is pure projectile motion from there.",set:{x0:0,y0:0,v:0,ang:65,boost:30,tb:2.5},show:["x0","y0","v","ang","boost","tb"]},
+ master:{n:"Master (everything)",d:"All the knobs. Combine a boost, a start height, any angle, any planet.",set:{},show:["x0","y0","v","ang","boost","tb"]}};
+let mode="angled",cpath=null,path=[],vac=[],T=0,t=0,playing=false,last=0,V={};
+
+function mk(id){const c=SL[id],w=document.createElement("div");w.className="row";w.id="row-"+id;
+ w.innerHTML=`<label for="${id}">${c.l}</label><output id="o-${id}" for="${id}"></output><input type="range" id="${id}" min="${c.min}" max="${c.max}" step="${c.step}" value="${P[id]}">`;
+ $(c.p).append(w);$(id).addEventListener("input",e=>{P[id]=+e.target.value;if(id==="m"||id==="r"||id==="cd")$("obj").value="";if(id==="g")$("planet").value=[...$("planet").options].some(o=>o.value==P.g)?P.g:"";out(id);update()});out(id)}
+function out(id){const d=(String(SL[id].step).split(".")[1]||"").length;$("o-"+id).textContent=(+P[id]).toFixed(d)+" "+SL[id].u}
+function setP(k,v){P[k]=v;$(k).value=v;out(k)}
+Object.keys(SL).forEach(mk);
+
+const mb=$("modes");
+for(const k in MODES){const b=document.createElement("button");b.textContent=MODES[k].n;b.dataset.m=k;b.onclick=()=>setMode(k);mb.append(b)}
+function setMode(k,keep){mode=k;const M=MODES[k];if(!keep)for(const s in M.set)setP(s,M.set[s]);
+ [...mb.children].forEach(b=>b.setAttribute("aria-pressed",b.dataset.m===k));
+ $("mdesc").textContent=M.d;
+ ["x0","y0","v","ang","boost","tb"].forEach(i=>$("row-"+i).hidden=!M.show.includes(i));
+ stop();t=0;update()}
+
+$("planet").onchange=e=>{if(e.target.value){setP("g",+e.target.value);update()}};
+$("air").onchange=e=>{P.air=e.target.checked;["m","r","cd"].forEach(i=>{$("row-"+i).classList.toggle("off",!P.air);$(i).disabled=!P.air});update()};
+["vec","prev","ghost"].forEach(i=>$(i).onchange=draw);
+$("t-launch").onclick=()=>tab("launch");$("t-air").onclick=()=>tab("air");$("t-exp").onclick=()=>tab("exp");
+function tab(w){["launch","air","exp"].forEach(k=>{$("p-"+k).hidden=k!==w;$("t-"+k).setAttribute("aria-selected",k===w)});if(w==="exp")update()}
+
+function kOf(){return .5*1.225*P.cd*Math.PI*(P.r/100)**2/P.m}
+function sim(drag,Q=P){
+ const a=Q.ang*Math.PI/180,c=Math.cos(a),s=Math.sin(a),k=drag?kOf():0,dt=.004,pts=[];
+ let x=Q.x0,y=Q.y0,vx=Q.v*c,vy=Q.v*s,tt=0;pts.push([0,x,y,vx,vy]);
+ const acc=(q,ux,uy)=>{const sp=Math.hypot(ux,uy),b=q<Q.tb?Q.boost:0;return[-k*sp*ux+b*c,-Q.g-k*sp*uy+b*s]};
+ if(y<=0&&vy<=0&&!(Q.boost>0&&s>0))return pts;
+ for(let i=0;i<60000;i++){
+  const a1=acc(tt,vx,vy),mx=vx+a1[0]*dt/2,my=vy+a1[1]*dt/2,a2=acc(tt+dt/2,mx,my);
+  const nx=x+mx*dt,ny=y+my*dt,nvx=vx+a2[0]*dt,nvy=vy+a2[1]*dt;
+  if(ny<=0){const f=y/(y-ny||1e-9);pts.push([tt+dt*f,x+(nx-x)*f,0,vx+(nvx-vx)*f,vy+(nvy-vy)*f]);break}
+  x=nx;y=ny;vx=nvx;vy=nvy;tt+=dt;pts.push([tt,x,y,vx,vy])}
+ return pts}
+function at(pts,q){let lo=0,hi=pts.length-1;if(q>=pts[hi][0])return pts[hi];
+ while(hi-lo>1){const m=(lo+hi)>>1;pts[m][0]<=q?lo=m:hi=m}
+ const A=pts[lo],B=pts[hi],f=(q-A[0])/((B[0]-A[0])||1);return A.map((n,i)=>n+(B[i]-n)*f)}
+
+function update(){
+ path=sim(P.air);vac=P.air?sim(false):path;T=path[path.length-1][0];
+ const cm=$("cmp").value;cpath=null;
+ if(cm){const Q={...P};if(cm==="comp")Q.ang=90-P.ang;else if(cm==="ground")Q.y0=0;else Q.v=P.v*2;cpath=sim(P.air,Q)}
+ t=Math.min(t,T);$("scrub").max=Math.max(T,.01);
+ let X1=P.x0+1,Y1=P.y0+1,X0=P.x0;
+ for(const arr of [path,vac,cpath||path])for(const p of arr){X1=Math.max(X1,p[1]);X0=Math.min(X0,p[1]);Y1=Math.max(Y1,p[2])}
+ V={x0:Math.min(0,X0),x1:X1*1.06+1,y1:Y1*1.1+1};
+ const L=path[path.length-1],hmax=path.reduce((m,p)=>Math.max(m,p[2]),0),f=n=>n.toFixed(1);
+ const cmp=(a,b)=>P.air?` <span style="color:var(--vac)">(no air: ${f(b)})</span>`:"";
+ const vL=vac[vac.length-1],vh=vac.reduce((m,p)=>Math.max(m,p[2]),0);
+ $("res").innerHTML=[["Max height",f(hmax)+" m"+cmp(0,vh)],["Range",f(L[1]-P.x0)+" m"+cmp(0,vL[1]-P.x0)],["Flight time",f(T)+" s"+cmp(0,vL[0])],["Impact speed",f(Math.hypot(L[3],L[4]))+" m/s"+cmp(0,Math.hypot(vL[3],vL[4]))]].map(([a,b])=>`<div class="stat"><span>${a}</span><b>${b}</b></div>`).join("");
+ const sum=`It stays up for ${f(T)} s, peaks at ${f(hmax)} m and lands ${f(L[1]-P.x0)} m away.`+(P.air?` Without air it would travel ${f(vL[1]-P.x0)} m.`:"");
+ $("sum").textContent=sum;$("cv").setAttribute("aria-label","Projectile path. "+sum);
+ let cn="Pick a comparison to draw a second path in gold.";
+ if(cpath){const E=cpath[cpath.length-1],r1=L[1]-P.x0,r2=E[1]-cpath[0][1],ch=cpath.reduce((m,p)=>Math.max(m,p[2]),0);
+  cn=`Gold path: ${f(r2)} m range, ${f(E[0])} s in the air, peak ${f(ch)} m. This launch: ${f(r1)} m.`;
+  if(cm==="comp")cn+=Math.abs(r1-r2)<=.01*Math.max(r1,r2,1)?" Same range! Complementary angles match on level ground with no air.":" Ranges differ here, since matching only works on level ground with no air.";
+  else if(cm==="ground")cn+=` Starting ${f(P.y0)} m up adds ${f(T-E[0])} s of air time and ${f(r1-r2)} m of range.`;
+  else cn+=` Range is ${(r2/Math.max(r1,.001)).toFixed(1)}x and height ${(ch/Math.max(hmax,.001)).toFixed(1)}x. On level ground with no air it is 4x for both, since they scale with speed squared.`}
+ $("cnote").textContent=cn;if(!$("p-exp").hidden)sweep();
+ $("go").textContent=t>=T&&T>0&&t>0?"Replay":playing?"Pause":"Launch";
+ draw()}
+
+function stop(){playing=false;$("go").textContent="Launch"}
+$("go").onclick=()=>{if(playing){stop();$("go").textContent="Resume";return}
+ if(t>=T)t=0;playing=true;last=performance.now();$("go").textContent="Pause";requestAnimationFrame(loop)};
+$("rs").onclick=()=>{stop();t=0;draw()};
+$("scrub").oninput=e=>{stop();t=+e.target.value;draw()};
+$("ts").oninput=e=>$("o-ts").textContent=e.target.value+"x";
+function loop(n){if(!playing)return;t+=(n-last)/1000*$("ts").value;last=n;
+ if(t>=T){t=T;stop();$("go").textContent="Replay"}else requestAnimationFrame(loop);draw()}
+
+const cv=$("cv"),ctx=cv.getContext("2d");
+const css=n=>getComputedStyle(document.documentElement).getPropertyValue(n).trim();
+function nice(r){const e=10**Math.floor(Math.log10(r)),m=r/e;return(m<1.5?1:m<3.5?2:m<7.5?5:10)*e}
+function arrow(x,y,dx,dy,col){const l=Math.hypot(dx,dy);if(l<4)return;ctx.strokeStyle=ctx.fillStyle=col;ctx.lineWidth=2.5;ctx.beginPath();ctx.moveTo(x,y);ctx.lineTo(x+dx,y+dy);ctx.stroke();
+ const a=Math.atan2(dy,dx);ctx.beginPath();ctx.moveTo(x+dx,y+dy);ctx.lineTo(x+dx-9*Math.cos(a-.4),y+dy-9*Math.sin(a-.4));ctx.lineTo(x+dx-9*Math.cos(a+.4),y+dy-9*Math.sin(a+.4));ctx.fill()}
+function draw(){
+ const dpr=devicePixelRatio||1,W=cv.clientWidth,H=cv.clientHeight;
+ if(cv.width!==Math.round(W*dpr)){cv.width=Math.round(W*dpr);cv.height=Math.round(H*dpr)}
+ ctx.setTransform(dpr,0,0,dpr,0,0);
+ const g=ctx.createLinearGradient(0,0,0,H);g.addColorStop(0,css("--sky1"));g.addColorStop(1,css("--sky2"));ctx.fillStyle=g;ctx.fillRect(0,0,W,H);
+ const Lp=48,B=30,Tp=14,R=14,sc=Math.min((W-Lp-R)/(V.x1-V.x0),(H-B-Tp)/V.y1);
+ const X=x=>Lp+(x-V.x0)*sc,Y=y=>H-B-y*sc;
+ ctx.font="12px system-ui";ctx.lineWidth=1;ctx.fillStyle=css("--mute");
+ const st=nice(70/sc);ctx.strokeStyle=css("--grid");
+ for(let x=Math.ceil(V.x0/st)*st;x<=V.x1;x+=st){ctx.beginPath();ctx.moveTo(X(x),Tp);ctx.lineTo(X(x),H-B);ctx.stroke();ctx.textAlign="center";ctx.fillText(+x.toFixed(2),X(x),H-B+16)}
+ for(let y=0;y<=V.y1;y+=st){ctx.beginPath();ctx.moveTo(Lp,Y(y));ctx.lineTo(W-R,Y(y));ctx.stroke();ctx.textAlign="right";ctx.fillText(+y.toFixed(2),Lp-6,Y(y)+4)}
+ ctx.textAlign="left";ctx.fillText("m",W-R-12,H-B-6);
+ ctx.fillStyle=css("--ground");ctx.fillRect(0,H-B,W,B);
+ if(P.y0>0){ctx.fillStyle=css("--tower");ctx.fillRect(X(P.x0)-4,Y(P.y0),8,P.y0*sc)}
+ const line=(pts,col,dash,w,end)=>{ctx.strokeStyle=col;ctx.lineWidth=w;ctx.setLineDash(dash);ctx.beginPath();let first=1;
+  for(const p of pts){if(end!==undefined&&p[0]>end)break;first?ctx.moveTo(X(p[1]),Y(p[2])):ctx.lineTo(X(p[1]),Y(p[2]));first=0}
+  if(end!==undefined){const c=at(pts,end);ctx.lineTo(X(c[1]),Y(c[2]))}ctx.stroke();ctx.setLineDash([])};
+ if(P.air&&$("ghost").checked)line(vac,css("--vac"),[8,6],2);
+ if(cpath)line(cpath,css("--cmp"),[10,5],2.5);
+ if($("prev").checked)line(path,css("--mute"),[2,5],2);
+ line(path,css("--ball"),[],3.5,t);
+ const c=at(path,t),px=X(c[1]),py=Y(c[2]);
+ if(P.boost>0&&t<P.tb&&t<T){const a=P.ang*Math.PI/180;ctx.fillStyle="#ff9f1c";ctx.beginPath();ctx.moveTo(px-10*Math.cos(a)+4*Math.sin(a),py+10*Math.sin(a)+4*Math.cos(a));ctx.lineTo(px-30*Math.cos(a)*(.8+.4*Math.random()),py+30*Math.sin(a)*(.8+.4*Math.random()));ctx.lineTo(px-10*Math.cos(a)-4*Math.sin(a),py+10*Math.sin(a)-4*Math.cos(a));ctx.fill()}
+ if($("vec").checked&&t<T){arrow(px,py,c[3]*2.5,0,css("--vx"));arrow(px,py,0,-c[4]*2.5,css("--vy"));arrow(px,py,c[3]*2.5,-c[4]*2.5,css("--acc"))}
+ ctx.fillStyle=css("--ball");ctx.strokeStyle="#fff";ctx.lineWidth=2;ctx.beginPath();ctx.arc(px,py,8,0,7);ctx.fill();ctx.stroke();
+ const f=n=>n.toFixed(2);
+ $("live").innerHTML=[["Time",f(c[0])+" s"],["x",f(c[1])+" m"],["Height y",f(c[2])+" m"],["Vx",f(c[3])+" m/s"],["Vy",f(c[4])+" m/s"],["Speed",f(Math.hypot(c[3],c[4]))+" m/s"]].map(([a,b])=>`<div class="stat"><span>${a}</span><b>${b}</b></div>`).join("");
+ $("scrub").value=t}
+function sweep(){const c=$("sw"),x=c.getContext("2d"),dpr=devicePixelRatio||1,W=c.clientWidth,H=c.clientHeight;if(!W)return;
+ c.width=W*dpr;c.height=H*dpr;x.setTransform(dpr,0,0,dpr,0,0);
+ const R=[];for(let a=0;a<=90;a+=3){const q=sim(P.air,{...P,ang:a});R.push([a,q[q.length-1][1]-P.x0])}
+ const mx=Math.max(...R.map(r=>r[1]),1),X=a=>34+a/90*(W-46),Y=r=>H-22-r/mx*(H-34);
+ x.fillStyle=css("--sky2");x.fillRect(0,0,W,H);x.font="11px system-ui";x.fillStyle=css("--mute");x.strokeStyle=css("--grid");x.lineWidth=1;
+ [0,30,45,60,90].forEach(a=>{x.beginPath();x.moveTo(X(a),8);x.lineTo(X(a),H-22);x.stroke();x.textAlign="center";x.fillText(a+"\u00b0",X(a),H-8)});
+ x.textAlign="right";x.fillText(mx.toFixed(0)+" m",30,16);x.fillText("0",30,H-24);
+ x.strokeStyle=css("--acc");x.lineWidth=2.5;x.beginPath();R.forEach((r,i)=>i?x.lineTo(X(r[0]),Y(r[1])):x.moveTo(X(r[0]),Y(r[1])));x.stroke();
+ const dot=(a,r,col)=>{if(a<0||a>90)return;x.fillStyle=col;x.beginPath();x.arc(X(a),Y(r),6,0,7);x.fill()};
+ const cur=path[path.length-1][1]-P.x0;
+ if(cpath&&$("cmp").value==="comp")dot(90-P.ang,cpath[cpath.length-1][1]-cpath[0][1],css("--cmp"));
+ dot(P.ang,cur,css("--ball"))}
+new ResizeObserver(draw).observe(cv);
+const OBJ={cotton:[.003,2,.6],pingpong:[.0027,2,.47],marsh:[.007,1.6,.5],base:[.145,3.7,.35],rock:[1,4,.8]};
+$("cmp").onchange=update;
+$("best").onclick=()=>{setP("ang",45);update()};
+$("obj").onchange=e=>{const o=OBJ[e.target.value];if(!o)return;setP("m",o[0]);setP("r",o[1]);setP("cd",o[2]);$("air").checked=true;$("air").onchange({target:{checked:true}})};
+$("air").onchange({target:{checked:false}});
+setMode("angled");
+</script>
+</body>
+</html>
