@@ -1,0 +1,784 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Step-by-step guide to building an incline plane Free Body Diagram</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Atkinson+Hyperlegible:ital,wght@0,400;0,700;1,400&family=STIX+Two+Text:ital,wght@1,400;1,600&display=swap" rel="stylesheet">
+<style>
+:root{
+  --paper:#f3f6f9; --panel:#ffffff; --grid:#e6ecf2; --line:#d3dbe3;
+  --ink:#1b2530; --muted:#5a6673;
+  --ramp:#565c63; --wedge:#eef1f4;
+  --vert:#d8302a; --norm:#1d44d4; --par:#7a3cb8;
+  --nf:#0b8a5c; --ff:#c2470f;
+  --angA:#f0a500; --angAtext:#a86f00; --angB:#0f9b83; --block:#dfe6ee;
+  --btn:#1b2530; --btn-ink:#ffffff;
+  --ok:#0b7a4f; --okbg:#e3f5ec; --no:#b3261e; --nobg:#fdeceb;
+  color-scheme:light;
+  box-sizing:border-box;
+  padding-top:env(safe-area-inset-top,0px);
+  padding-bottom:env(safe-area-inset-bottom,0px);
+}
+@media (prefers-color-scheme: dark){
+  :root:not([data-theme="light"]){
+    --paper:#0f1720; --panel:#16202b; --grid:#1d2936; --line:#2a3846;
+    --ink:#e6edf4; --muted:#9aa8b6;
+    --ramp:#aeb7c1; --wedge:#1c2734;
+    --vert:#ff5d52; --norm:#7393ff; --par:#c093ff;
+    --nf:#3fd69a; --ff:#ff9a5c;
+    --angA:#ffc23a; --angAtext:#ffc23a; --angB:#36d1b2; --block:#2a3746;
+    --btn:#e6edf4; --btn-ink:#0f1720;
+    --ok:#5fe0a6; --okbg:#143327; --no:#ff8a80; --nobg:#3a1c1b;
+    color-scheme:dark;
+  }
+}
+:root[data-theme="dark"]{
+  --paper:#0f1720; --panel:#16202b; --grid:#1d2936; --line:#2a3846;
+  --ink:#e6edf4; --muted:#9aa8b6;
+  --ramp:#aeb7c1; --wedge:#1c2734;
+  --vert:#ff5d52; --norm:#7393ff; --par:#c093ff;
+  --nf:#3fd69a; --ff:#ff9a5c;
+  --angA:#ffc23a; --angAtext:#ffc23a; --angB:#36d1b2; --block:#2a3746;
+  --btn:#e6edf4; --btn-ink:#0f1720;
+  --ok:#5fe0a6; --okbg:#143327; --no:#ff8a80; --nobg:#3a1c1b;
+  color-scheme:dark;
+}
+*,*::before,*::after{box-sizing:inherit}
+html{scroll-padding-top:env(safe-area-inset-top,0px)}
+body{
+  margin:0; background:var(--paper); color:var(--ink);
+  font-family:"Atkinson Hyperlegible",system-ui,-apple-system,"Segoe UI",Roboto,sans-serif;
+  font-size:17px; line-height:1.55;
+}
+.wrap{max-width:1220px;margin:0 auto;padding:26px 20px 44px}
+header h1{font-size:clamp(1.4rem,2.5vw,2rem);line-height:1.2;margin:0 0 8px;max-width:32ch}
+header p{margin:0;color:var(--muted);max-width:66ch}
+.m{font-family:"STIX Two Text",Georgia,"Times New Roman",serif;font-style:italic;font-size:1.08em}
+
+.progress{display:grid;grid-template-columns:5fr 7fr 1.6fr;gap:14px;margin:20px 0 0}
+.seg{min-width:0}
+.seg .lbl{font-size:.9rem;color:var(--muted);margin:0 0 6px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.seg.on .lbl{color:var(--ink);font-weight:700}
+.pips{display:flex;gap:5px}
+.pips button{
+  flex:1;height:10px;min-width:14px;border-radius:5px;border:0;padding:0;cursor:pointer;
+  background:var(--line);
+}
+.pips button.done{background:var(--muted)}
+.pips button[aria-current="step"]{background:var(--norm)}
+.pips button:disabled{cursor:default;opacity:.6}
+@media (max-width:620px){.progress{grid-template-columns:1fr}.seg .lbl{white-space:normal}}
+
+.layout{display:grid;grid-template-columns:minmax(0,1.6fr) minmax(310px,1fr);gap:22px;margin-top:18px;align-items:start}
+@media (max-width:900px){.layout{grid-template-columns:1fr}}
+.board{
+  background-color:var(--panel);
+  background-image:linear-gradient(var(--grid) 1px,transparent 1px),linear-gradient(90deg,var(--grid) 1px,transparent 1px);
+  background-size:26px 26px;
+  border:1px solid var(--line);border-radius:14px;overflow:hidden;position:relative;
+}
+.board svg{display:block;width:100%;height:auto;user-select:none;-webkit-user-select:none}
+.board svg.aim{cursor:crosshair;touch-action:none}
+.hint{position:absolute;left:12px;bottom:10px;font-size:.9rem;color:var(--muted);background:var(--panel);padding:3px 9px;border-radius:8px;border:1px solid var(--line)}
+.hint[hidden]{display:none}
+
+.panel{background:var(--panel);border:1px solid var(--line);border-radius:14px;padding:20px 20px 18px}
+.part{color:var(--muted);font-size:.92rem;margin:0}
+.panel h2{font-size:1.3rem;line-height:1.25;margin:4px 0 10px}
+.body p{margin:0 0 .6em}
+.kA,.kB,.kV,.kN,.kP,.kNf,.kF{font-weight:700}
+.kA{color:var(--angAtext)} .kB{color:var(--angB)} .kV{color:var(--vert)} .kN{color:var(--norm)} .kP{color:var(--par)}
+.kNf{color:var(--nf)} .kF{color:var(--ff)}
+
+.task{margin:10px 0 4px}
+.task:empty{display:none}
+.choices{display:grid;gap:8px;margin-bottom:8px}
+.choices button,.tbtn{
+  font:inherit;text-align:left;padding:10px 12px;border-radius:10px;cursor:pointer;
+  border:1.5px solid var(--line);background:transparent;color:var(--ink);
+}
+.choices button:hover,.tbtn:hover{border-color:var(--muted)}
+.choices button.right{border-color:var(--ok);background:var(--okbg)}
+.choices button.wrongpick{border-color:var(--no)}
+.tbtn{display:inline-block;margin-top:4px;font-size:.95rem}
+.fb{border-radius:10px;padding:9px 12px;margin:6px 0;font-size:.98rem}
+.fb.ok{background:var(--okbg);color:var(--ink);border-left:4px solid var(--ok)}
+.fb.no{background:var(--nobg);color:var(--ink);border-left:4px solid var(--no)}
+.fb.info{background:var(--wedge)}
+.eq{background:var(--wedge);border-radius:10px;padding:10px 12px;margin:8px 0}
+.eq p{margin:.15em 0}
+.eq .h{font-size:.9rem;color:var(--muted);margin-top:.5em}
+.eq .h:first-child{margin-top:0}
+
+.nav{display:flex;gap:10px;margin:14px 0 14px}
+.nav button{
+  flex:1;font:inherit;font-weight:700;padding:10px 12px;border-radius:10px;cursor:pointer;
+  border:1.5px solid var(--btn);background:transparent;color:var(--ink);
+}
+.nav button.primary{background:var(--btn);color:var(--btn-ink)}
+.nav button:disabled{opacity:.35;cursor:default}
+button:focus-visible,input:focus-visible,[tabindex]:focus-visible{outline:3px solid var(--norm);outline-offset:2px}
+
+.controls{border-top:1px solid var(--line);padding-top:14px}
+.controls label{display:block}
+.row{display:flex;justify-content:space-between;align-items:baseline;gap:10px}
+input[type=range]{width:100%;margin:5px 0 10px;accent-color:var(--norm)}
+.check{display:flex;gap:8px;align-items:center;cursor:pointer;margin-bottom:4px}
+.check input{width:18px;height:18px;accent-color:var(--norm)}
+.simctl[hidden],.proofctl[hidden]{display:none}
+.simbtns{display:flex;gap:10px;margin:4px 0 10px}
+.simbtns button{flex:1;font:inherit;font-weight:700;padding:10px;border-radius:10px;cursor:pointer;border:1.5px solid var(--btn);background:transparent;color:var(--ink)}
+.simbtns button.primary{background:var(--btn);color:var(--btn-ink)}
+.readout{margin-top:10px;background:var(--wedge);border-radius:10px;padding:10px 12px;font-size:.96rem}
+.readout div{display:flex;justify-content:space-between;gap:10px}
+.readout .res{margin-top:6px;padding-top:6px;border-top:1px solid var(--line);font-weight:700}
+
+/* SVG */
+.ramp{stroke:var(--ramp);stroke-width:5;stroke-linecap:round}
+.ramp-thin{stroke:var(--ramp);stroke-width:2;stroke-linecap:round}
+.hatch{stroke:var(--line);stroke-width:1.5}
+.wedgefill{fill:var(--wedge)}
+.vert{stroke:var(--vert);stroke-width:3.5;stroke-linecap:round}
+.norm{stroke:var(--norm);stroke-width:3.5;stroke-linecap:round}
+.rt{fill:none;stroke:var(--ink);stroke-width:1.6}
+.tick{stroke:var(--ink);stroke-width:2}
+.ang path{opacity:.38}
+.ang.A path{fill:var(--angA)} .ang.B path{fill:var(--angB)} .ang.Q path{fill:var(--muted);opacity:.32}
+.ang.cur path{opacity:.85}
+.ang.pick{cursor:pointer}
+.ang.pick:hover path,.ang.pick:focus path{opacity:.6}
+.ang.pick:focus{outline:none}
+.ang.pick:focus path{stroke:var(--norm);stroke-width:2}
+.ang text,.tag,.vl,.axl{paint-order:stroke;stroke:var(--panel);stroke-width:5px;stroke-linejoin:round}
+.ang text{font:700 17px "Atkinson Hyperlegible",system-ui,sans-serif;fill:var(--ink);text-anchor:middle;dominant-baseline:central}
+.tag{font:400 14px "Atkinson Hyperlegible",system-ui,sans-serif;text-anchor:middle}
+.tag.v{fill:var(--vert)} .tag.n{fill:var(--norm)}
+.faded{opacity:.14}
+.block{fill:var(--block);stroke:var(--ink);stroke-width:1.8}
+.vec line{stroke-width:3.8;stroke-linecap:round}
+.vec.dashed line{stroke-dasharray:8 6;stroke-width:3}
+.vec.ghost{opacity:.3}
+.vec.ghost line{stroke-dasharray:6 6}
+.vec.mg line{stroke:var(--ink)} .vec.mg polygon{fill:var(--ink)}
+.vec.pe line{stroke:var(--norm)} .vec.pe polygon{fill:var(--norm)}
+.vec.pa line{stroke:var(--par)} .vec.pa polygon{fill:var(--par)}
+.vec.nf line{stroke:var(--nf)} .vec.nf polygon{fill:var(--nf)}
+.vec.ff line{stroke:var(--ff)} .vec.ff polygon{fill:var(--ff)}
+.vec.draft line{stroke:var(--muted)} .vec.draft polygon{fill:var(--muted)}
+.vec.wrong line{stroke:var(--no);stroke-dasharray:6 5} .vec.wrong polygon{fill:var(--no)}
+.dash{stroke:var(--muted);stroke-width:1.5;stroke-dasharray:4 5}
+.axis{stroke:var(--muted);stroke-width:1.5;stroke-dasharray:2 6;stroke-linecap:round}
+.axl{font:italic 600 17px "STIX Two Text",Georgia,serif;fill:var(--muted);text-anchor:middle;dominant-baseline:central}
+.vl{font:italic 600 18px "STIX Two Text",Georgia,serif;dominant-baseline:central}
+.vl.mg{fill:var(--ink)} .vl.pe{fill:var(--norm)} .vl.pa{fill:var(--par)} .vl.nf{fill:var(--nf)} .vl.ff{fill:var(--ff)}
+.ring{fill:none;stroke:var(--norm);stroke-width:2.5}
+.dot{fill:var(--ink)}
+.new{animation:appear .45s ease-out}
+@keyframes appear{from{opacity:0}to{opacity:1}}
+.pulse{animation:pulse 1.4s ease-in-out infinite;transform-box:fill-box;transform-origin:center}
+@keyframes pulse{0%,100%{opacity:.9;transform:scale(1)}50%{opacity:.3;transform:scale(1.6)}}
+@media (prefers-reduced-motion: reduce){.new,.pulse{animation:none}}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <header>
+    <h1>Step-by-step guide to building an incline plane Free Body Diagram</h1>
+    <p>First prove where the angle <span class="m">θ</span> goes. Then build the free-body diagram yourself, one force at a time. Finish by testing whether the block slides.</p>
+  </header>
+
+  <nav class="progress" id="progress" aria-label="Progress"></nav>
+
+  <div class="layout">
+    <div class="board">
+      <svg id="fig" viewBox="0 0 820 540" role="img" aria-label="Incline diagram"></svg>
+      <p class="hint" id="hint" hidden>Drag from the block to aim the arrow</p>
+    </div>
+
+    <section class="panel" aria-labelledby="stitle">
+      <p class="part" id="part"></p>
+      <h2 id="stitle"></h2>
+      <div class="body" id="sbody"></div>
+      <div class="task" id="task" aria-live="polite"></div>
+      <div class="nav">
+        <button id="prev" type="button">Back</button>
+        <button id="next" type="button" class="primary">Next step</button>
+      </div>
+
+      <div class="controls">
+        <label for="theta">
+          <span class="row"><span>Ramp angle <span class="kA">A</span> (<span class="m">θ</span>)</span><strong id="tval">30°</strong></span>
+        </label>
+        <input id="theta" type="range" min="10" max="60" step="1" value="30">
+
+        <div class="proofctl" id="proofctl">
+          <label class="check"><input id="vals" type="checkbox"> Show angle sizes in degrees</label>
+        </div>
+
+        <div class="simctl" id="simctl" hidden>
+          <label for="mass"><span class="row"><span>Mass <span class="m">m</span></span><strong id="mval">5 kg</strong></span></label>
+          <input id="mass" type="range" min="1" max="20" step="1" value="5">
+          <label for="mus"><span class="row"><span>Static friction coefficient <span class="m">μ</span><sub>s</sub></span><strong id="musval">0.50</strong></span></label>
+          <input id="mus" type="range" min="0" max="1" step="0.05" value="0.5">
+          <label for="muk"><span class="row"><span>Kinetic friction coefficient <span class="m">μ</span><sub>k</sub></span><strong id="mukval">0.35</strong></span></label>
+          <input id="muk" type="range" min="0" max="1" step="0.05" value="0.35">
+          <label class="check"><input id="comps" type="checkbox" checked> Show components of <span class="m">mg</span></label>
+          <div class="simbtns">
+            <button id="release" type="button" class="primary">Release the block</button>
+            <button id="reset" type="button">Reset</button>
+          </div>
+        </div>
+
+        <div class="readout" id="readout"></div>
+      </div>
+    </section>
+  </div>
+</div>
+
+<script>
+const g = 9.8;
+const PARTS = ["Part 1: Prove the angle", "Part 2: Build the diagram", "Part 3: Test your diagram"];
+
+const STEPS = [
+  { p:0, k:"read", t:"The ramp is a right triangle",
+    b:"<p>The flat ground and the back wall meet at 90°. Call the ramp’s angle <span class='kA'>A</span>.</p><p>This is the <span class='m'>θ</span> you will use in the free-body diagram.</p>" },
+  { p:0, k:"read", t:"The top angle is 90° − A",
+    b:"<p>A triangle’s angles add to 180°. With 90° used at the back corner, the top angle is <span class='kB'>B</span> = 90° − A.</p><p>Keep this pair in mind: <span class='kA'>A</span> + <span class='kB'>B</span> = 90°.</p>" },
+  { p:0, k:"read", t:"Drop a line in the direction of gravity",
+    b:"<p>Gravity always pulls straight down. Draw a <span class='kV'>vertical line</span> from a point on the ramp to the ground.</p><p>It meets the ground at 90° and shares angle A with the big triangle, so its top angle is also <span class='kB'>B</span>.</p>" },
+  { p:0, k:"read", t:"Draw the normal line",
+    b:"<p>At the same point, draw a <span class='kN'>line perpendicular to the ramp</span>. This is the direction of the normal force.</p><p>From the ramp to the normal line is 90°. The vertical line splits that 90° into <span class='kB'>B</span> and a new angle. Since B + ? = 90°, the new angle must be <span class='kA'>A</span>.</p>" },
+  { p:0, k:"read", t:"Parallel lines carry the angle anywhere",
+    b:"<p>Every vertical line is parallel to every other one (marked //).</p><p>Where the ramp crosses two parallel lines, <strong>corresponding angles</strong> are equal: <span class='kB'>B</span> = <span class='kB'>B</span>. Where the normal line crosses them, <strong>alternate interior angles</strong> are equal: <span class='kA'>A</span> = <span class='kA'>A</span>.</p><p><strong>Result:</strong> anywhere on the ramp, the angle between the vertical and the normal line equals the ramp angle <span class='m'>θ</span>.</p>" },
+
+  { p:1, k:"aim", key:"mg", t:"Draw the weight",
+    b:"<p>A free-body diagram shows every force acting on one object: here, the block. Assume the block is sitting still on the ramp.</p><p>Start with gravity. <strong>Drag from the block</strong> to aim the weight <span class='m'>mg</span>, then let go.</p>" },
+  { p:1, k:"aim", key:"N", t:"Draw the normal force",
+    b:"<p>The ramp pushes back on the block. That push is the <span class='kNf'>normal force <span class='m'>N</span></span>.</p><p>Drag to aim it. Think about which ways a surface is able to push.</p>" },
+  { p:1, k:"aim", key:"f", t:"Draw friction",
+    b:"<p>Without friction, the block would slide down the ramp. <span class='kF'>Static friction <span class='m'>f</span></span> holds it in place.</p><p>Drag to aim friction.</p>" },
+  { p:1, k:"choice", key:"axes", t:"Choose your axes",
+    b:"<p>To add forces, we break them into x and y parts. You get to pick which way the axes point.</p><p>Which choice makes the math easiest?</p>",
+    opts:[
+      { l:"Horizontal and vertical (the usual x and y)", ok:false,
+        why:"That works, but then both N and f point between the axes and both need to be split. That’s two forces to break up." },
+      { l:"Tilted: along the ramp and perpendicular to it", ok:true,
+        why:"Right. N and f already lie on these axes, so only mg needs to be split. We’ll call down the ramp +x and away from the ramp +y." }
+    ] },
+  { p:1, k:"pick", key:"theta", t:"Find θ in the force triangle",
+    b:"<p>Weight is the only force not on our tilted axes, so we split it into two dashed pieces: one along the normal line and one along the ramp.</p><p>Part 1 proved that the angle between the vertical and the normal line equals the ramp angle. <strong>Tap the shaded angle that equals <span class='m'>θ</span>.</strong></p>" },
+  { p:1, k:"choice", key:"comp", t:"Name the components",
+    b:"<p><span class='m'>θ</span> sits between <span class='m'>mg</span> and the piece along the normal line. In this right triangle, <span class='m'>mg</span> is the hypotenuse and that piece is the side next to <span class='m'>θ</span>.</p><p>Which component pushes into the ramp?</p>",
+    opts:[
+      { l:"mg sin θ", ok:false,
+        why:"Sine goes with the side opposite θ. The piece pushing into the ramp is next to θ, so it uses cosine." },
+      { l:"mg cos θ", ok:true,
+        why:"Yes: adjacent side, cosine. The piece into the ramp is mg cos θ. The piece down the ramp is opposite θ, so it is mg sin θ." }
+    ] },
+  { p:1, k:"read", t:"Your finished free-body diagram",
+    b:"<p>The block has three forces on it: <span class='kNf'><span class='m'>N</span></span>, <span class='kF'><span class='m'>f</span></span>, and gravity. Gravity is now shown as its two components, <span class='kN'><span class='m'>mg</span> cos <span class='m'>θ</span></span> and <span class='kP'><span class='m'>mg</span> sin <span class='m'>θ</span></span>. The original <span class='m'>mg</span> is faded so it isn’t counted twice.</p><div class='eq'><p class='h'>Perpendicular to the ramp (y)</p><p><span class='m'>N</span> − <span class='m'>mg</span> cos <span class='m'>θ</span> = 0, so <span class='m'>N</span> = <span class='m'>mg</span> cos <span class='m'>θ</span></p><p class='h'>Along the ramp (x, down is positive)</p><p><span class='m'>mg</span> sin <span class='m'>θ</span> − <span class='m'>f</span> = <span class='m'>ma</span></p></div>" },
+
+  { p:2, k:"sandbox", t:"Will it slide?",
+    b:"<p>Static friction can push only up to a maximum of <span class='m'>μ</span><sub>s</sub><span class='m'>N</span>. If <span class='m'>mg</span> sin <span class='m'>θ</span> is bigger than that, the block slides, and kinetic friction <span class='m'>μ</span><sub>k</sub><span class='m'>N</span> takes over.</p><p>Change the controls, predict what happens, then release the block. Watch what changing the mass does to the acceleration.</p>" }
+];
+
+const AIM = {
+  mg: { ok:"Correct. Gravity pulls straight down, no matter how the ramp is tilted.",
+        generic:"Not quite. Gravity pulls toward the center of the Earth: straight down." },
+  N:  { ok:"Correct. The normal force is perpendicular to the surface, pushing away from it.",
+        generic:"Not quite. A surface pushes perpendicular to itself, away from the surface." },
+  f:  { ok:"Correct. Friction acts along the surface, opposite the way the block would slide.",
+        generic:"Not quite. Friction runs along the surface, parallel to the ramp." }
+};
+
+let step = 0, maxStep = 0, deg = 30, showVals = false;
+const done = { mg:false, N:false, f:false, axes:false, theta:false, comp:false };
+const tries = { mg:0, N:0, f:0, theta:0 };
+let fb = null, chosen = {}, draftAng = null, wrongAng = null, dragging = false;
+const sim = { m:5, mus:0.5, muk:0.35, comps:true, pos:0.75, v:0, dist:0, running:false, last:0, msg:null };
+const START = 0.78, END = 0.3, RAMP_M = 4;
+
+const $ = s => document.querySelector(s);
+const svg = $("#fig");
+const W = 820, G0 = 410, X0 = 150, MG = 150;
+const P = (x, y) => ({ x, y });
+const add = (a, b, k = 1) => P(a.x + b.x * k, a.y + b.y * k);
+const f1 = n => n.toFixed(1);
+const nrm = a => { while (a > Math.PI) a -= 2 * Math.PI; while (a <= -Math.PI) a += 2 * Math.PI; return a; };
+const adiff = (a, b) => Math.abs(nrm(a - b));
+const dirOf = a => P(Math.cos(a), Math.sin(a));
+const R2D = 180 / Math.PI;
+
+function ln(a, b, cls) {
+  return `<line x1="${f1(a.x)}" y1="${f1(a.y)}" x2="${f1(b.x)}" y2="${f1(b.y)}" class="${cls}"/>`;
+}
+function wedge(c, r, a1, a2, kind, label, cur, attrs = "") {
+  const d = nrm(a2 - a1);
+  const p1 = add(c, dirOf(a1), r), p2 = add(c, dirOf(a1 + d), r);
+  const lp = add(c, dirOf(a1 + d / 2), r + 14);
+  return `<g class="ang ${kind}${cur ? " cur" : ""}" ${attrs}><path d="M${f1(c.x)} ${f1(c.y)} L${f1(p1.x)} ${f1(p1.y)} A${r} ${r} 0 0 ${d > 0 ? 1 : 0} ${f1(p2.x)} ${f1(p2.y)} Z"/><text x="${f1(lp.x)}" y="${f1(lp.y)}">${label}</text></g>`;
+}
+function rightMark(v, d1, d2, k = 13) {
+  const a = add(v, d1, k), b = add(a, d2, k), c = add(v, d2, k);
+  return `<path class="rt" d="M${f1(a.x)} ${f1(a.y)} L${f1(b.x)} ${f1(b.y)} L${f1(c.x)} ${f1(c.y)}"/>`;
+}
+function ticks(x, y) {
+  let s = "";
+  for (const o of [0, 7]) s += ln(P(x - 9, y + 4 + o), P(x + 9, y - 4 + o), "tick");
+  return s;
+}
+function arrow(a, b, cls) {
+  const dx = b.x - a.x, dy = b.y - a.y, l = Math.hypot(dx, dy);
+  if (l < 2) return "";
+  const ux = dx / l, uy = dy / l, h = Math.min(13, l * 0.55), w = 6;
+  const base = P(b.x - ux * h, b.y - uy * h);
+  const p1 = P(base.x - uy * w, base.y + ux * w), p2 = P(base.x + uy * w, base.y - ux * w);
+  return `<g class="vec ${cls}">${ln(a, base, "")}<polygon points="${f1(b.x)},${f1(b.y)} ${f1(p1.x)},${f1(p1.y)} ${f1(p2.x)},${f1(p2.y)}"/></g>`;
+}
+function vlab(tip, dir, text, cls, off = 16) {
+  const q = add(tip, dir, off);
+  const anc = dir.x > 0.35 ? "start" : dir.x < -0.35 ? "end" : "middle";
+  const dy = dir.y > 0.5 ? 6 : dir.y < -0.5 ? -6 : 0;
+  return `<text class="vl ${cls}" text-anchor="${anc}" x="${f1(q.x)}" y="${f1(q.y + dy)}">${text}</text>`;
+}
+
+function sideLab(tip, side, text, cls) {
+  const q = add(tip, side, 12);
+  return `<text class="vl ${cls}" text-anchor="start" x="${f1(q.x)}" y="${f1(q.y)}">${text}</text>`;
+}
+function geo() {
+  const t = deg * Math.PI / 180, c = Math.cos(t), s = Math.sin(t), tn = Math.tan(t);
+  const L = Math.min(600, 320 / tn);
+  const A0 = P(X0, G0), R = P(X0 + L, G0), T = P(X0 + L, G0 - L * tn);
+  const u = P(c, -s), n = P(s, c), nu = P(-c, s), nn = P(-s, -c);
+  return { t, c, s, tn, L, A0, R, T, u, n, nu, nn,
+    aU: -t, aNU: Math.PI - t, aD: Math.PI / 2, aUp: -Math.PI / 2, aN: Math.PI / 2 - t, aNN: -Math.PI / 2 - t };
+}
+function blockAt(G, frac) {
+  const bw = 66, bh = 40;
+  const S = P(X0 + frac * G.L, G0 - frac * G.L * G.tn);
+  const S1 = add(S, G.u, -bw / 2), S2 = add(S, G.u, bw / 2), S3 = add(S2, G.nn, bh), S4 = add(S1, G.nn, bh);
+  const C = add(S, G.nn, bh / 2);
+  return { C, poly: `<polygon class="block" points="${[S1, S2, S3, S4].map(p => f1(p.x) + "," + f1(p.y)).join(" ")}"/>` };
+}
+
+function targetAng(key, G) {
+  return key === "mg" ? G.aD : key === "N" ? G.aNN : G.aU;
+}
+function aimCandidates(key, G) {
+  if (key === "mg") return [
+    { a:G.aN, msg:"That’s perpendicular to the ramp. Gravity ignores the ramp: it pulls straight down." },
+    { a:G.aNU, msg:"That’s down the slope, which is only part of gravity’s pull. The full weight points straight down." },
+    { a:G.aD, msg:"Close. Adjust it a little more: gravity points exactly straight down." }];
+  if (key === "N") return [
+    { a:G.aUp, msg:"Close, but not straight up. The normal force is perpendicular to the ramp’s surface, so it tilts with the ramp." },
+    { a:G.aN, msg:"Surfaces push, they don’t pull. Point the normal force away from the ramp." },
+    { a:G.aNN, msg:"Close. Adjust it so it makes a right angle with the ramp." }];
+  return [
+    { a:G.aNU, msg:"Friction opposes the way the block would slide. It would slide down, so friction points up the ramp." },
+    { a:G.aNN, msg:"That’s the direction of the normal force. Friction runs along the surface." },
+    { a:G.aU, msg:"Close. Line it up with the ramp’s surface." }];
+}
+
+function physics() {
+  const G = geo();
+  const N = sim.m * g * G.c, Wp = sim.m * g * G.s, fsMax = sim.mus * N;
+  const holds = Wp <= fsMax + 1e-9;
+  const fr = holds ? Wp : sim.muk * N;
+  const a = holds ? 0 : g * (G.s - sim.muk * G.c);
+  return { N, Wp, fsMax, holds, fr, a, mg: sim.m * g };
+}
+
+/* ---------- drawing ---------- */
+function draw(animate) {
+  const G = geo();
+  const s = step;
+  const lA = showVals ? `${deg}°` : "A", lB = showVals ? `${90 - deg}°` : "B";
+  const lT = showVals ? `${deg}°` : "θ";
+  let out = "";
+
+  // ground with hatching, ramp
+  let hatch = "";
+  for (let x = 20; x < W - 10; x += 20) hatch += ln(P(x, G0 + 2), P(x - 12, G0 + 14), "hatch");
+  out += hatch;
+  out += `<polygon class="wedgefill" points="${f1(G.A0.x)},${f1(G.A0.y)} ${f1(G.R.x)},${f1(G.R.y)} ${f1(G.T.x)},${f1(G.T.y)}"/>`;
+  out += ln(P(14, G0), P(W - 14, G0), "ramp-thin");
+  if (s < 5) out += ln(add(G.A0, G.u, -48), add(G.T, G.u, 46), "ramp-thin");
+  out += ln(G.A0, G.T, "ramp") + ln(G.R, G.T, "ramp") + ln(G.A0, G.R, "ramp");
+
+  // ---- Part 1 construction ----
+  const sq = 0.42;
+  const Q = P(X0 + sq * G.L, G0 - sq * G.L * G.tn), F = P(Q.x, G0);
+  const Gp = add(Q, G.n, (G0 - Q.y) / G.c);
+  const K = P(Gp.x, G0 - (Gp.x - X0) * G.tn);
+  const grp = (k, inner) => s < k ? "" : `<g class="${k === s && animate ? "new" : ""}">${inner}</g>`;
+  const cur = k => k === s;
+
+  let con = "";
+  con += grp(0, wedge(G.A0, 50, G.aU, 0, "A", lA, cur(0)) + rightMark(G.R, P(-1, 0), P(0, -1), 15));
+  con += grp(1, wedge(G.T, 36, G.aD, G.aNU, "B", lB, cur(1)));
+  con += grp(2,
+    ln(add(Q, P(0, -1), 58), add(F, P(0, 1), 40), "vert") +
+    `<text class="tag v" x="${f1(Q.x)}" y="${f1(Q.y - 66)}">vertical</text>` +
+    rightMark(F, P(-1, 0), P(0, -1), 13) +
+    wedge(Q, 40, G.aNU, G.aD, "B", lB, cur(2)));
+  con += grp(3,
+    ln(add(Q, G.nn, 72), add(Gp, G.n, 34), "norm") +
+    `<text class="tag n" x="${f1(Q.x - G.s * 86)}" y="${f1(Q.y - G.c * 86)}">normal</text>` +
+    rightMark(Q, G.n, G.u, 13) +
+    wedge(Q, 40, G.aD, G.aN, "A", lA, cur(3)));
+  con += grp(4,
+    ln(P(Gp.x, 16), P(Gp.x, G0 + 40), "vert") +
+    ticks(Q.x, G0 + 24) + ticks(Gp.x, G0 + 24) +
+    wedge(Gp, 40, G.aUp, G.aNN, "A", lA, cur(4)) +
+    wedge(K, 34, G.aNU, G.aD, "B", lB, cur(4)));
+  if (s < 5) out += `<g>${con}</g>`;
+
+  // ---- Part 2 ----
+  if (s >= 5 && s <= 11) {
+    const { C, poly } = blockAt(G, 0.6);
+    out += grp(5, poly);
+    const D = add(C, P(0, 1), MG);
+    const Pp = add(C, G.n, MG * G.c), Pl = add(C, G.nu, MG * G.s);
+    const Ntip = add(C, G.nn, MG * G.c), Ftip = add(C, G.u, MG * G.s);
+
+    if (done.axes && s >= 8) {
+      out += grp(8,
+        ln(add(C, G.u, -175), add(C, G.u, 175), "axis") +
+        ln(add(C, G.n, -150), add(C, G.n, 150), "axis") +
+        `<text class="axl" x="${f1(C.x + G.nu.x * 190)}" y="${f1(C.y + G.nu.y * 190)}">+x</text>` +
+        `<text class="axl" x="${f1(C.x + G.nn.x * 165)}" y="${f1(C.y + G.nn.y * 165)}">+y</text>`);
+    }
+    if (s >= 9) {
+      let comp = ln(Pp, D, "dash") + ln(Pl, D, "dash") + rightMark(Pp, G.nn, G.nu, 11) +
+        arrow(C, Pl, "pa dashed") + arrow(C, Pp, "pe dashed");
+      if (done.comp && s >= 10) {
+        comp += vlab(Pp, G.n, "mg cos θ", "pe", 14) + vlab(Pl, G.nu, "mg sin θ", "pa", 14);
+      }
+      out += grp(9, comp);
+      if (s === 9 && !done.theta) {
+        out += wedge(C, 56, G.aD, G.aN, "Q", "?", false, `data-pick="right" tabindex="0" role="button" aria-label="Angle between mg and the normal line"`).replace('class="ang Q', 'class="ang Q pick');
+        out += wedge(C, 56, G.aNU, G.aD, "Q", "?", false, `data-pick="wrong" tabindex="0" role="button" aria-label="Angle between mg and the ramp direction"`).replace('class="ang Q', 'class="ang Q pick');
+      } else if (done.theta) {
+        out += wedge(C, 56, G.aD, G.aN, "A", lT, s === 9);
+      }
+    }
+
+    if (done.f && s >= 7) out += arrow(C, Ftip, "ff") + vlab(Ftip, G.u, "f", "ff", 12);
+    if (done.N && s >= 6) out += arrow(C, Ntip, "nf") + sideLab(Ntip, G.u, "N", "nf");
+    if (done.mg) out += arrow(C, D, s >= 11 ? "mg ghost" : "mg") + vlab(D, P(0, 1), "mg", "mg", 14);
+
+    const st = STEPS[s];
+    if (st.k === "aim" && !done[st.key]) {
+      if (wrongAng !== null && !dragging) out += arrow(C, add(C, dirOf(wrongAng), 130), "wrong");
+      if (draftAng !== null && dragging) out += arrow(C, add(C, dirOf(draftAng), 130), "draft");
+      out += `<circle class="ring pulse" cx="${f1(C.x)}" cy="${f1(C.y)}" r="11"/>`;
+    }
+    out += `<circle class="dot" cx="${f1(C.x)}" cy="${f1(C.y)}" r="3.5"/>`;
+  }
+
+  // ---- Part 3 sandbox ----
+  if (s === 12) {
+    const ph = physics();
+    const sc = MG / ph.mg;
+    const { C, poly } = blockAt(G, sim.pos);
+    out += poly;
+    const D = add(C, P(0, 1), MG);
+    const Pp = add(C, G.n, MG * G.c), Pl = add(C, G.nu, MG * G.s);
+    const Ntip = add(C, G.nn, ph.N * sc), Ftip = add(C, G.u, ph.fr * sc);
+    if (sim.comps) {
+      out += ln(Pp, D, "dash") + ln(Pl, D, "dash") + rightMark(Pp, G.nn, G.nu, 11);
+      out += wedge(C, 50, G.aD, G.aN, "A", lT, false);
+      out += arrow(C, Pl, "pa dashed") + arrow(C, Pp, "pe dashed");
+      out += vlab(Pp, G.n, `mg cos θ = ${ph.N.toFixed(1)} N`, "pe", 14);
+      out += `<text class="vl pa" text-anchor="middle" x="${f1(Pl.x + G.n.x * 22)}" y="${f1(Pl.y + G.n.y * 22 + 4)}">mg sin θ = ${ph.Wp.toFixed(1)} N</text>`;
+    }
+    if (ph.fr > 0.05) out += arrow(C, Ftip, "ff") + vlab(Ftip, G.u, `f = ${ph.fr.toFixed(1)} N`, "ff", 12);
+    out += arrow(C, Ntip, "nf") + sideLab(Ntip, G.u, `N = ${ph.N.toFixed(1)} N`, "nf");
+    out += arrow(C, D, sim.comps ? "mg ghost" : "mg") + vlab(D, P(0, 1), `mg = ${ph.mg.toFixed(1)} N`, "mg", 14);
+    out += `<circle class="dot" cx="${f1(C.x)}" cy="${f1(C.y)}" r="3.5"/>`;
+  }
+
+  svg.innerHTML = out;
+  svg.setAttribute("aria-label", `${STEPS[s].t}. Ramp angle ${deg} degrees.`);
+  const aiming = STEPS[s].k === "aim" && !done[STEPS[s].key];
+  svg.classList.toggle("aim", aiming);
+  $("#hint").hidden = !aiming;
+}
+
+/* ---------- panel ---------- */
+function canNext() {
+  const st = STEPS[step];
+  if (st.k === "read" || st.k === "sandbox") return true;
+  return done[st.key];
+}
+
+function renderTask() {
+  const st = STEPS[step], el = $("#task");
+  let h = "";
+  if (st.k === "aim") {
+    if (done[st.key]) h = `<div class="fb ok">${AIM[st.key].ok}</div>`;
+    else {
+      if (fb) h += `<div class="fb ${fb.cls}">${fb.msg}</div>`;
+      if (tries[st.key] > 0) h += `<button class="tbtn" type="button" data-show="${st.key}">Show me the answer</button>`;
+    }
+  } else if (st.k === "choice") {
+    h += `<div class="choices">` + st.opts.map((o, i) => {
+      let cls = "";
+      if (done[st.key] && o.ok) cls = "right";
+      else if (chosen[st.key] === i && !o.ok) cls = "wrongpick";
+      return `<button type="button" data-opt="${i}" class="${cls}">${o.l.replace(/θ/g, "<span class='m'>θ</span>").replace(/^mg/, "<span class='m'>mg</span>")}</button>`;
+    }).join("") + `</div>`;
+    if (chosen[st.key] !== undefined) {
+      const o = st.opts[chosen[st.key]];
+      h += `<div class="fb ${o.ok ? "ok" : "no"}">${o.why}</div>`;
+    }
+  } else if (st.k === "pick") {
+    if (done.theta) h = `<div class="fb ok">Yes. This angle sits between the vertical (where <span class='m'>mg</span> points) and the normal line, which Part 1 proved equals <span class='m'>θ</span>.</div>`;
+    else {
+      if (fb) h += `<div class="fb ${fb.cls}">${fb.msg}</div>`;
+      if (tries.theta > 0) h += `<button class="tbtn" type="button" data-show="theta">Show me the answer</button>`;
+    }
+  } else if (st.k === "sandbox" && sim.msg) {
+    h = `<div class="fb ${sim.msg.cls}">${sim.msg.text}</div>`;
+  }
+  el.innerHTML = h;
+}
+
+function renderReadout() {
+  const r = deg * Math.PI / 180;
+  const p = STEPS[step].p;
+  let h;
+  if (p === 0) {
+    h = `<div><span>A</span><strong>${deg}°</strong></div><div><span>B = 90° − A</span><strong>${90 - deg}°</strong></div><div><span>A + B</span><strong>90°</strong></div>`;
+  } else if (p === 1) {
+    h = `<div><span>sin θ</span><strong>${Math.sin(r).toFixed(2)}</strong></div><div><span>cos θ</span><strong>${Math.cos(r).toFixed(2)}</strong></div>`;
+    if (step >= 10 && done.comp) h += `<div><span>mg sin θ (down the ramp)</span><strong>${Math.sin(r).toFixed(2)} mg</strong></div><div><span>mg cos θ (into the ramp)</span><strong>${Math.cos(r).toFixed(2)} mg</strong></div>`;
+  } else {
+    const ph = physics();
+    const crit = Math.atan(sim.mus) * R2D;
+    h = `<div><span>Weight mg</span><strong>${ph.mg.toFixed(1)} N</strong></div>
+      <div><span>mg sin θ (down the ramp)</span><strong>${ph.Wp.toFixed(1)} N</strong></div>
+      <div><span>N = mg cos θ</span><strong>${ph.N.toFixed(1)} N</strong></div>
+      <div><span>Max static friction μ<sub>s</sub>N</span><strong>${ph.fsMax.toFixed(1)} N</strong></div>
+      <div><span>Starts to slide above</span><strong>${crit.toFixed(1)}°</strong></div>
+      <div class="res"><span>${ph.holds ? "Stays put" : "Slides"}</span><strong>a = ${ph.a.toFixed(2)} m/s²</strong></div>`;
+    if (sim.dist > 0) h += `<div><span>Distance slid</span><strong>${sim.dist.toFixed(2)} m</strong></div><div><span>Speed</span><strong>${sim.v.toFixed(2)} m/s</strong></div>`;
+  }
+  $("#readout").innerHTML = h;
+}
+
+function renderProgress() {
+  const nav = $("#progress");
+  nav.innerHTML = PARTS.map((name, p) => {
+    const pips = STEPS.map((st, i) => st.p !== p ? "" :
+      `<button type="button" data-go="${i}" class="${i < step ? "done" : ""}" ${i === step ? 'aria-current="step"' : ""} ${i > maxStep ? "disabled" : ""} aria-label="Step ${i + 1}: ${st.t}"></button>`).join("");
+    return `<div class="seg ${STEPS[step].p === p ? "on" : ""}"><p class="lbl">${name}</p><div class="pips">${pips}</div></div>`;
+  }).join("");
+}
+
+function render(animate = true) {
+  const st = STEPS[step];
+  const inPart = STEPS.filter(x => x.p === st.p);
+  $("#part").textContent = inPart.length > 1 ? `${PARTS[st.p]}, step ${inPart.indexOf(st) + 1} of ${inPart.length}` : PARTS[st.p];
+  $("#stitle").textContent = st.t;
+  $("#sbody").innerHTML = st.b;
+  $("#prev").disabled = step === 0;
+  const last = step === STEPS.length - 1;
+  $("#next").disabled = last || !canNext();
+  $("#next").textContent = last ? "Guide complete" : (canNext() ? "Next step" : "Finish this step first");
+  $("#tval").textContent = `${deg}°`;
+  $("#proofctl").hidden = st.p === 2;
+  $("#simctl").hidden = st.p !== 2;
+  renderTask();
+  renderReadout();
+  renderProgress();
+  draw(animate);
+}
+
+function go(i) {
+  if (i < 0 || i >= STEPS.length) return;
+  stopSim();
+  step = i;
+  maxStep = Math.max(maxStep, step);
+  fb = null; wrongAng = null; draftAng = null;
+  if (step === 12) resetSim();
+  render();
+}
+
+/* ---------- aiming ---------- */
+function svgPt(e) {
+  const p = svg.createSVGPoint();
+  p.x = e.clientX; p.y = e.clientY;
+  return p.matrixTransform(svg.getScreenCTM().inverse());
+}
+function currentC() { return blockAt(geo(), 0.6).C; }
+function aimFrom(e) {
+  const p = svgPt(e), C = currentC();
+  const dx = p.x - C.x, dy = p.y - C.y;
+  if (Math.hypot(dx, dy) < 12) return null;
+  return Math.atan2(dy, dx);
+}
+svg.addEventListener("pointerdown", e => {
+  const st = STEPS[step];
+  if (st.k !== "aim" || done[st.key]) return;
+  dragging = true;
+  svg.setPointerCapture(e.pointerId);
+  draftAng = aimFrom(e);
+  draw(false);
+  e.preventDefault();
+});
+svg.addEventListener("pointermove", e => {
+  if (!dragging) return;
+  const a = aimFrom(e);
+  if (a !== null) { draftAng = a; draw(false); }
+});
+svg.addEventListener("pointerup", e => {
+  if (!dragging) return;
+  dragging = false;
+  const st = STEPS[step];
+  if (draftAng === null) { draw(false); return; }
+  evaluateAim(st.key, draftAng);
+});
+svg.addEventListener("pointercancel", () => { dragging = false; draftAng = null; draw(false); });
+
+function evaluateAim(key, ang) {
+  const G = geo();
+  const tol = Math.max(6, Math.min(12, deg / 2 - 1)) / R2D;
+  if (adiff(ang, targetAng(key, G)) <= tol) {
+    done[key] = true; fb = null; wrongAng = null; draftAng = null;
+    render(false);
+    return;
+  }
+  tries[key]++;
+  wrongAng = ang; draftAng = null;
+  let best = null, bd = Infinity;
+  for (const cnd of aimCandidates(key, G)) {
+    const d = adiff(ang, cnd.a);
+    if (d < bd) { bd = d; best = cnd; }
+  }
+  const near = Math.min(28, Math.max(10, deg * 0.45)) / R2D;
+  fb = { cls:"no", msg: bd <= near ? best.msg : AIM[key].generic };
+  render(false);
+}
+
+/* ---------- clicks in panel and figure ---------- */
+$("#task").addEventListener("click", e => {
+  const ob = e.target.closest("[data-opt]");
+  const sb = e.target.closest("[data-show]");
+  const st = STEPS[step];
+  if (ob && st.k === "choice" && !done[st.key]) {
+    const i = +ob.dataset.opt;
+    chosen[st.key] = i;
+    if (st.opts[i].ok) done[st.key] = true;
+    render(true);
+  }
+  if (sb) {
+    const k = sb.dataset.show;
+    done[k] = true; fb = null; wrongAng = null;
+    render(true);
+  }
+});
+function pickTheta(which) {
+  if (STEPS[step].k !== "pick" || done.theta) return;
+  if (which === "right") { done.theta = true; fb = null; }
+  else {
+    tries.theta++;
+    fb = { cls:"no", msg:"That one is B = 90° − θ. It sits between mg and the ramp’s direction. Look for the angle between mg and the normal line." };
+  }
+  render(false);
+}
+svg.addEventListener("click", e => {
+  const g = e.target.closest("[data-pick]");
+  if (g) pickTheta(g.dataset.pick);
+});
+svg.addEventListener("keydown", e => {
+  const g = e.target.closest && e.target.closest("[data-pick]");
+  if (g && (e.key === "Enter" || e.key === " ")) { e.preventDefault(); pickTheta(g.dataset.pick); }
+});
+
+$("#progress").addEventListener("click", e => {
+  const b = e.target.closest("[data-go]");
+  if (b && !b.disabled) go(+b.dataset.go);
+});
+$("#prev").addEventListener("click", () => go(step - 1));
+$("#next").addEventListener("click", () => { if (canNext()) go(step + 1); });
+document.addEventListener("keydown", e => {
+  if (e.target.matches("input, button, [tabindex]")) return;
+  if (e.key === "ArrowRight" && canNext()) go(step + 1);
+  if (e.key === "ArrowLeft") go(step - 1);
+});
+
+/* ---------- controls ---------- */
+$("#theta").addEventListener("input", e => {
+  deg = +e.target.value;
+  if (step === 12) resetSim();
+  wrongAng = null;
+  render(false);
+});
+$("#vals").addEventListener("change", e => { showVals = e.target.checked; render(false); });
+$("#mass").addEventListener("input", e => { sim.m = +e.target.value; $("#mval").textContent = `${sim.m} kg`; resetSim(); render(false); });
+$("#mus").addEventListener("input", e => {
+  sim.mus = +e.target.value;
+  if (sim.muk > sim.mus) { sim.muk = sim.mus; $("#muk").value = sim.muk; }
+  syncMu(); resetSim(); render(false);
+});
+$("#muk").addEventListener("input", e => {
+  sim.muk = Math.min(+e.target.value, sim.mus);
+  e.target.value = sim.muk;
+  syncMu(); resetSim(); render(false);
+});
+function syncMu() {
+  $("#musval").textContent = sim.mus.toFixed(2);
+  $("#mukval").textContent = sim.muk.toFixed(2);
+}
+$("#comps").addEventListener("change", e => { sim.comps = e.target.checked; render(false); });
+
+/* ---------- sandbox motion ---------- */
+function stopSim() { sim.running = false; }
+function resetSim() {
+  stopSim();
+  sim.pos = START; sim.v = 0; sim.dist = 0; sim.msg = null;
+}
+$("#reset").addEventListener("click", () => { resetSim(); render(false); });
+$("#release").addEventListener("click", () => {
+  const ph = physics();
+  if (sim.running) return;
+  if (sim.pos <= END + 1e-6) resetSim();
+  if (ph.holds) {
+    sim.msg = { cls:"info", text:`The block stays put. Static friction only needs to push ${ph.fr.toFixed(1)} N, which is below its maximum of ${ph.fsMax.toFixed(1)} N. Notice that f matches mg sin θ exactly.` };
+    render(false);
+    return;
+  }
+  sim.msg = { cls:"info", text:`mg sin θ (${ph.Wp.toFixed(1)} N) is bigger than the most static friction can give (${ph.fsMax.toFixed(1)} N), so the block slides. Kinetic friction is μ<sub>k</sub>N = ${ph.fr.toFixed(1)} N.` };
+  sim.running = true;
+  sim.last = performance.now();
+  requestAnimationFrame(tick);
+});
+function tick(now) {
+  if (!sim.running) return;
+  const ph = physics();
+  const dt = Math.min(0.05, (now - sim.last) / 1000);
+  sim.last = now;
+  sim.v += ph.a * dt;
+  sim.dist += sim.v * dt;
+  sim.pos = START - sim.dist / RAMP_M;
+  const maxDist = (START - END) * RAMP_M;
+  if (sim.dist >= maxDist) {
+    sim.dist = maxDist; sim.pos = END; sim.running = false;
+    sim.msg = { cls:"ok", text:`After sliding ${sim.dist.toFixed(2)} m, the block is moving at ${sim.v.toFixed(2)} m/s, with a = g(sin θ − μ<sub>k</sub> cos θ) = ${ph.a.toFixed(2)} m/s². Try a different mass: does a change?` };
+    renderTask();
+  }
+  renderReadout();
+  draw(false);
+  if (sim.running) requestAnimationFrame(tick);
+}
+
+syncMu();
+render();
+</script>
+</body>
+</html>
