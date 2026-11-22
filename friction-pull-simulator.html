@@ -1,0 +1,772 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Pulling Forces, Friction and Free Body Diagrams: Simulator</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Atkinson+Hyperlegible:ital,wght@0,400;0,700;1,400&family=STIX+Two+Text:ital,wght@0,400;0,600;1,400;1,600&display=swap" rel="stylesheet">
+<style>
+:root {
+  color-scheme: light;
+  --paper: #F4F7FB; --rule: #DCE6F2; --margin: #EDB9B9;
+  --panel: #FFFFFF; --line: #C7D4E3; --text: #1B2633; --muted: #5A6A7B; --ink: #1F4E79;
+  --wood: #E9C99A; --wood-edge: #8B5A2B; --wood-dark: #C79A63; --table: #E4DCCF; --metal: #8D99A6;
+  --applied: #1C6BD6; --friction: #E02F3A; --normal: #1F9D49; --gravity: #8A3FC6;
+  --chip-static: #FDECEC; --chip-kinetic: #E7F0FD; --focus: #1C6BD6;
+  --math: "STIX Two Text", "Times New Roman", Times, serif;
+  --ui: "Atkinson Hyperlegible", "Segoe UI", system-ui, -apple-system, sans-serif;
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    color-scheme: dark;
+    --paper: #101822; --rule: #1A2533; --margin: #4A2A2E;
+    --panel: #16212D; --line: #2B3B4D; --text: #E5ECF4; --muted: #9AABBD; --ink: #8FBCEB;
+    --wood: #C9A06C; --wood-edge: #E3C397; --wood-dark: #9C7646; --table: #2B2722; --metal: #6F7C89;
+    --applied: #4D9BFF; --friction: #FF5A63; --normal: #3CCF72; --gravity: #B67BEB;
+    --chip-static: #3A1E22; --chip-kinetic: #19304D; --focus: #4D9BFF;
+  }
+}
+:root[data-theme="dark"] {
+  color-scheme: dark;
+  --paper: #101822; --rule: #1A2533; --margin: #4A2A2E;
+  --panel: #16212D; --line: #2B3B4D; --text: #E5ECF4; --muted: #9AABBD; --ink: #8FBCEB;
+  --wood: #C9A06C; --wood-edge: #E3C397; --wood-dark: #9C7646; --table: #2B2722; --metal: #6F7C89;
+  --applied: #4D9BFF; --friction: #FF5A63; --normal: #3CCF72; --gravity: #B67BEB;
+  --chip-static: #3A1E22; --chip-kinetic: #19304D; --focus: #4D9BFF;
+}
+* { box-sizing: border-box; }
+html, body { margin: 0; }
+:root { padding-top: env(safe-area-inset-top, 0px); padding-bottom: env(safe-area-inset-bottom, 0px); }
+body {
+  background: var(--paper); color: var(--text); font-family: var(--ui); font-size: 16px; line-height: 1.45;
+}
+.wrap { max-width: 1240px; margin: 0 auto; padding: 18px 20px 28px; }
+header { display: flex; flex-wrap: wrap; align-items: baseline; justify-content: space-between; gap: 6px 24px; margin-bottom: 12px; }
+h1 { font-size: clamp(1.35rem, 2.4vw, 1.9rem); line-height: 1.15; margin: 0; color: var(--ink); letter-spacing: -0.01em; }
+.lede { margin: 2px 0 0; color: var(--muted); max-width: 62ch; }
+.status { font-weight: 700; padding: 6px 12px; border-radius: 999px; border: 1.5px solid currentColor; white-space: nowrap; font-size: 0.95rem; }
+.status.static { color: var(--friction); background: var(--chip-static); }
+.status.kinetic { color: var(--applied); background: var(--chip-kinetic); }
+
+.stage-wrap { position: relative; background: var(--panel); border: 1.5px solid var(--line); border-radius: 10px; overflow: hidden; }
+#stage { display: block; width: 100%; height: clamp(320px, 40vw, 470px); touch-action: none; cursor: grab; }
+#stage:focus-visible { outline: 3px solid var(--focus); outline-offset: -3px; }
+.stage-tip { position: absolute; left: 40px; top: 10px; font-size: 0.85rem; color: var(--muted); pointer-events: none; }
+
+.grid { display: grid; grid-template-columns: 300px 1fr 1.25fr; gap: 14px; margin-top: 14px; }
+.panel { background: var(--panel); border: 1.5px solid var(--line); border-radius: 10px; padding: 14px 16px; min-width: 0; }
+.panel h2 { font-size: 1.02rem; margin: 0 0 10px; color: var(--ink); }
+.ctl { margin-bottom: 14px; }
+.ctl label, .ctl .lab { display: flex; justify-content: space-between; font-weight: 700; font-size: 0.93rem; margin-bottom: 5px; }
+.ctl output { font-weight: 400; color: var(--muted); font-variant-numeric: tabular-nums; }
+input[type=range] { width: 100%; accent-color: var(--ink); }
+.seg { display: grid; grid-template-columns: 1fr 1fr; border: 1.5px solid var(--ink); border-radius: 8px; overflow: hidden; }
+.seg button { font: inherit; font-size: 0.92rem; padding: 7px 6px; border: 0; background: transparent; color: var(--ink); cursor: pointer; }
+.seg button[aria-pressed="true"] { background: var(--ink); color: var(--panel); font-weight: 700; }
+.btns { display: flex; flex-wrap: wrap; gap: 8px; }
+.btn { font: inherit; font-size: 0.92rem; font-weight: 700; padding: 8px 12px; border-radius: 8px; border: 1.5px solid var(--ink); background: transparent; color: var(--ink); cursor: pointer; }
+.btn.primary { background: var(--ink); color: var(--panel); }
+.btn[aria-pressed="true"] { background: var(--applied); border-color: var(--applied); color: #fff; }
+button:focus-visible, input:focus-visible { outline: 3px solid var(--focus); outline-offset: 2px; }
+.ctl.checks label { display: flex; justify-content: flex-start; font-weight: 400; align-items: center; gap: 8px; font-size: 0.93rem; margin: 4px 0; cursor: pointer; }
+.checks input { accent-color: var(--ink); width: 16px; height: 16px; }
+.hint { font-size: 0.82rem; color: var(--muted); margin: 6px 0 0; }
+
+#fbd { display: block; width: 100%; height: 320px; }
+#graph { display: block; width: 100%; height: 210px; }
+.legend { display: flex; flex-wrap: wrap; gap: 4px 14px; font-size: 0.82rem; color: var(--muted); margin: -4px 0 6px; }
+.legend span { display: inline-flex; align-items: center; gap: 6px; }
+.sw { width: 18px; height: 0; border-top: 3px solid; display: inline-block; }
+.sw.dash { border-top-style: dashed; border-top-width: 2px; }
+.m { font-family: var(--math); font-style: italic; font-size: 1.08em; }
+.m sub { font-size: 0.72em; }
+.m .up { font-style: normal; }
+.read { display: grid; grid-template-columns: 1fr 1fr; gap: 6px 16px; margin-top: 10px; font-variant-numeric: tabular-nums; }
+.read div { display: flex; justify-content: space-between; align-items: baseline; border-bottom: 1px solid var(--line); padding: 3px 0; font-size: 0.93rem; }
+.read b { font-weight: 700; }
+.read .k { display: inline-flex; align-items: center; gap: 7px; }
+.dot { width: 10px; height: 10px; border-radius: 50%; display: inline-block; }
+.peak-row { display: flex; justify-content: space-between; align-items: center; margin-top: 10px; gap: 10px; }
+.peak-row .big { font-size: 1.25rem; font-weight: 700; color: var(--applied); font-variant-numeric: tabular-nums; }
+footer { margin-top: 14px; font-size: 0.82rem; color: var(--muted); }
+
+@media (max-width: 1020px) { .grid { grid-template-columns: 1fr 1fr; } .grid .controls { grid-column: 1 / -1; } .controls-inner { display: grid; grid-template-columns: repeat(auto-fit, minmax(230px, 1fr)); gap: 0 20px; } }
+@media (max-width: 680px) { .grid { grid-template-columns: 1fr; } #stage { height: 250px; } .stage-tip { display: none; } .wrap { padding: 12px 12px 22px; } }
+@media (prefers-reduced-motion: reduce) { * { animation: none !important; } }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <header>
+    <div>
+      <h1>Pulling Forces, Friction and Free Body Diagrams</h1>
+      <p class="lede">Drag on the bench to pull the force gauge. Lift and drag again to keep pulling. Watch the red friction arrow grow until the block breaks free.</p>
+    </div>
+    <div id="status" class="status static" role="status" aria-live="polite">At rest: static friction</div>
+  </header>
+
+  <div class="stage-wrap">
+    <canvas id="stage" tabindex="0" aria-label="Lab bench. A wooden block on a board is attached by a string to a force gauge. Drag the gauge, or focus here and use the right and left arrow keys to pull."></canvas>
+    <div class="stage-tip">Keyboard: focus the bench, then use → and ← (hold Shift for bigger steps). Space starts a steady pull.</div>
+  </div>
+
+  <div class="grid">
+    <section class="panel controls" aria-label="Controls">
+      <h2>Set up the trial</h2>
+      <div class="controls-inner">
+        <div>
+          <div class="ctl">
+            <span class="lab">Contact face</span>
+            <div class="seg" role="group" aria-label="Contact face">
+              <button id="faceSticky" aria-pressed="true">Sticky pads</button>
+              <button id="faceWheels" aria-pressed="false">Wheels</button>
+            </div>
+          </div>
+          <div class="ctl">
+            <label for="angle">Incline angle <output id="angleOut">0°</output></label>
+            <input id="angle" type="range" min="0" max="50" step="1" value="0">
+          </div>
+          <div class="ctl">
+            <label for="mass">Block mass <output id="massOut">0.50 kg</output></label>
+            <input id="mass" type="range" min="0.2" max="2" step="0.05" value="0.5">
+          </div>
+        </div>
+        <div>
+          <div class="ctl">
+            <label for="speed">Steady pull speed <output id="speedOut">8 cm/s</output></label>
+            <input id="speed" type="range" min="1" max="25" step="1" value="8">
+          </div>
+          <div class="ctl btns">
+            <button id="auto" class="btn" aria-pressed="false">Start steady pull</button>
+            <button id="reset" class="btn primary">Reset block</button>
+            <button id="pause" class="btn" aria-pressed="false">Pause</button>
+          </div>
+          <div class="ctl checks">
+            <label><input id="showStageArrows" type="checkbox" checked> Force arrows on the block</label>
+            <label><input id="showComps" type="checkbox"> Gravity components</label>
+            <label><input id="showGhost" type="checkbox" checked> Maximum static friction (dashed)</label>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <section class="panel" aria-label="Free-body diagram">
+      <h2>Free-body diagram</h2>
+      <canvas id="fbd" role="img" aria-label="Live free-body diagram of the block"></canvas>
+      <p class="hint" id="fbdHint">Arrow lengths are drawn to scale.</p>
+    </section>
+
+    <section class="panel" aria-label="Force graph and readings">
+      <h2>Force gauge reading over time</h2>
+      <div class="legend">
+        <span><i class="sw" style="border-color:var(--applied)"></i>Gauge reading <span class="m">F<sub class="up">app</sub></span></span>
+        <span><i class="sw" style="border-color:var(--friction)"></i>Friction <span class="m">f</span></span>
+        <span><i class="sw dash" style="border-color:var(--friction)"></i>Max static <span class="m">μ<sub>s</sub>F<sub>N</sub></span></span>
+      </div>
+      <canvas id="graph" role="img" aria-label="Graph of gauge reading and friction force for the last 10 seconds"></canvas>
+      <div class="peak-row">
+        <div>Peak reading: <span class="big" id="peak">0.00 N</span></div>
+        <button id="clearPeak" class="btn">Clear peak</button>
+      </div>
+      <div class="read" aria-live="off">
+        <div><span class="k"><i class="dot" style="background:var(--applied)"></i><span class="m">F<sub class="up">app</sub></span></span><b id="rT">0.00 N</b></div>
+        <div><span class="k"><i class="dot" style="background:var(--friction)"></i><span class="m">f</span> <span id="fKind" style="color:var(--muted);font-size:.85em">static</span></span><b id="rF">0.00 N</b></div>
+        <div><span class="k"><i class="dot" style="background:var(--normal)"></i><span class="m">F<sub>N</sub></span></span><b id="rN">0.00 N</b></div>
+        <div><span class="k"><i class="dot" style="background:var(--gravity)"></i><span class="m">F<sub>g</sub></span> = <span class="m">mg</span></span><b id="rG">0.00 N</b></div>
+        <div><span class="k"><span class="m">mg</span> sin <span class="m">θ</span></span><b id="rPar">0.00 N</b></div>
+        <div><span class="k">Speed <span class="m">v</span></span><b id="rV">0.0 cm/s</b></div>
+      </div>
+    </section>
+  </div>
+  <footer>Friction model: sticky pads <span class="m">μ<sub>s</sub></span> = 0.90, <span class="m">μ<sub>k</sub></span> = 0.60; wheels <span class="m">μ<sub>s</sub></span> = 0.035, <span class="m">μ<sub>k</sub></span> = 0.025. The string does not stretch; the gauge’s internal spring does, so its pull rod slides out as the reading rises. <span class="m">g</span> = 9.8 m/s².</footer>
+</div>
+
+<script>
+// ---- Physics core (shared by page + tests) ----
+const PHYS = {
+  g: 9.8, boardLen: 3.0, blockLen: 0.18, stringLen: 0.12, hookRest: 0.012,
+  k: 120, damp: 7, tau: 0.6, dt: 1/2000,
+  faces: { sticky: { mus: 0.90, muk: 0.60, beta: 0.5 }, wheels: { mus: 0.035, muk: 0.025, beta: 0.05 } }
+};
+function makeState() {
+  return { sb: 0.2, vb: 0, stuck: true, tStuck: 5, sg: 0, vg: 0, T: 0, f: 0, fsMax: 0,
+           sliding: false, breakaway: 0, held: false };
+}
+function stepPhysics(S, p, dt) {
+  // p: {m, theta, face}
+  const fc = PHYS.faces[p.face], m = p.m, th = p.theta;
+  const N = m * PHYS.g * Math.cos(th), G = -m * PHYS.g * Math.sin(th);
+  const front = S.sb + PHYS.blockLen / 2;
+  const x = S.sg - PHYS.hookRest - front - PHYS.stringLen;
+  const T = x > 0 ? PHYS.k * x : 0;
+  const musEff = fc.muk + (fc.mus - fc.muk) * (1 - Math.exp(-S.tStuck / PHYS.tau));
+  const fsMax = musEff * N;
+  const sMin = PHYS.blockLen / 2 + 0.03, sMax = PHYS.boardLen - PHYS.blockLen / 2 - 0.02;
+  let f = 0;
+  S.breakaway = 0;
+  if (S.stuck) {
+    const Fo = T + G;
+    const atMin = S.sb <= sMin + 1e-9 && Fo < 0, atMax = S.sb >= sMax - 1e-9 && Fo > 0;
+    if (Math.abs(Fo) <= fsMax) { f = -Fo; S.tStuck += dt; }
+    else if (atMin || atMax) { f = -Math.sign(Fo) * fsMax; S.tStuck += dt; }
+    else {
+      S.stuck = false;
+      S.breakaway = fsMax - fc.muk * N; // size of the drop
+    }
+  }
+  if (!S.stuck) {
+    const dir = S.vb !== 0 ? Math.sign(S.vb) : Math.sign(T + G);
+    f = -dir * (fc.muk + fc.beta * Math.abs(S.vb)) * N;
+    const hand = S.vg > 0 || S.vb > 0 ? -PHYS.damp * (S.vb - Math.max(0, S.vg)) * (T > 0 ? 1 : 0) : 0;
+    const a = (T + G + f + hand) / m;
+    let v = S.vb + a * dt;
+    if ((S.vb !== 0 && Math.sign(v) !== Math.sign(S.vb)) || (S.vb === 0 && Math.sign(v) !== dir)) {
+      v = 0; S.stuck = true; S.tStuck = 0;
+    }
+    S.sb += v * dt; S.vb = v;
+    if (S.sb < sMin) { S.sb = sMin; S.vb = 0; S.stuck = true; S.tStuck = 0; }
+    if (S.sb > sMax) { S.sb = sMax; S.vb = 0; S.stuck = true; S.tStuck = 0; }
+  }
+  S.T = T; S.f = f; S.fsMax = fsMax; S.N = N; S.G = G; S.sliding = !S.stuck;
+}
+
+
+
+// ================= App =================
+const $ = id => document.getElementById(id);
+const stage = $("stage"), fbd = $("fbd"), graph = $("graph");
+const sctx = stage.getContext("2d"), fctx = fbd.getContext("2d"), gctx = graph.getContext("2d");
+
+const P = { m: 0.5, theta: 0, face: "sticky" };
+const UI = { auto: false, paused: false, speed: 0.08, stageArrows: true, comps: false, ghost: true };
+let S = makeState();
+let held = false, grabOffset = 0, everGrabbed = false;
+let simTime = 0, peak = 0;
+const hist = [];             // {t, T, f, fs}
+const HIST_SPAN = 10;
+const flashes = [];          // breakaway bursts {t0, size}
+let ppm = 500, ppmTarget = 500, x0 = 60, y0 = 300;
+const VIEW = 1.4;            // metres of board visible at once; the camera follows the block
+let sCam = -0.08;
+let grabAlong = 0, grabSg = 0;
+let vgFilt = 0, lastSg = 0;
+
+const BL = PHYS.blockLen, BODY_H = 0.045, WHEEL_R = 0.016, PAD_H = 0.006;
+const GAUGE_LEN = 0.17, GAUGE_H = 0.058;
+const SG_MAX = PHYS.boardLen + 0.24;
+
+function geom() {
+  const sticky = P.face === "sticky";
+  const bottom = sticky ? PAD_H : 2 * WHEEL_R;
+  return { sticky, bottom, hc: bottom + BODY_H / 2 };
+}
+function slackSg() { return S.sb + BL / 2 + PHYS.hookRest + PHYS.stringLen - 0.02; }
+function resetBlock() {
+  S = makeState(); S.sg = slackSg(); lastSg = S.sg; vgFilt = 0;
+  hist.length = 0; peak = 0; flashes.length = 0; setAuto(false); held = false;
+}
+
+// ---------- colors from CSS ----------
+let C = {};
+function readColors() {
+  const cs = getComputedStyle(document.documentElement);
+  for (const k of ["paper","rule","margin","panel","line","text","muted","ink","wood","wood-edge","wood-dark","table","metal","applied","friction","normal","gravity"])
+    C[k] = cs.getPropertyValue("--" + k).trim();
+}
+readColors();
+matchMedia("(prefers-color-scheme: dark)").addEventListener("change", readColors);
+
+// ---------- canvas sizing ----------
+function fit(cv, ctx) {
+  const dpr = Math.min(window.devicePixelRatio || 1, 2.5);
+  const r = cv.getBoundingClientRect();
+  const w = Math.max(1, Math.round(r.width * dpr)), h = Math.max(1, Math.round(r.height * dpr));
+  if (cv.width !== w || cv.height !== h) { cv.width = w; cv.height = h; }
+  ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+  return { w: r.width, h: r.height };
+}
+
+// ---------- drawing helpers ----------
+function arrow(ctx, x, y, dx, dy, color, width = 6, opts = {}) {
+  const len = Math.hypot(dx, dy);
+  if (len < 3) return;
+  const ux = dx / len, uy = dy / len;
+  const head = Math.min(width * 3.2, len * 0.6), hw = width * 1.9;
+  const bx = x + dx - ux * head, by = y + dy - uy * head;
+  ctx.save();
+  if (opts.dash) {
+    ctx.setLineDash(opts.dash); ctx.lineWidth = Math.max(2, width * 0.45); ctx.strokeStyle = color;
+    ctx.globalAlpha = opts.alpha ?? 0.9;
+    ctx.beginPath(); ctx.moveTo(x, y); ctx.lineTo(bx, by); ctx.stroke();
+    ctx.setLineDash([]);
+    ctx.beginPath(); ctx.moveTo(x + dx, y + dy); ctx.lineTo(bx - uy * hw, by + ux * hw); ctx.lineTo(bx + uy * hw, by - ux * hw); ctx.closePath(); ctx.stroke();
+    ctx.restore(); return;
+  }
+  if (opts.glow) { ctx.shadowColor = opts.glowColor || color; ctx.shadowBlur = opts.glow; }
+  ctx.strokeStyle = color; ctx.fillStyle = color; ctx.lineWidth = width; ctx.lineCap = "round";
+  ctx.beginPath(); ctx.moveTo(x, y); ctx.lineTo(bx, by); ctx.stroke();
+  ctx.beginPath(); ctx.moveTo(x + dx, y + dy); ctx.lineTo(bx - uy * hw, by + ux * hw); ctx.lineTo(bx + uy * hw, by - ux * hw); ctx.closePath(); ctx.fill();
+  ctx.restore();
+}
+// vector symbol with optional subscript; centered at x,y
+function vecLabel(ctx, main, sub, x, y, color, size = 18, value = null, subUpright = false) {
+  ctx.save();
+  ctx.fillStyle = color; ctx.textBaseline = "alphabetic";
+  const fMain = `italic ${size}px ${getComputedStyle(document.documentElement).getPropertyValue("--math")}`;
+  const fSub = `${subUpright ? "" : "italic "}${Math.round(size * 0.66)}px ${getComputedStyle(document.documentElement).getPropertyValue("--math")}`;
+  ctx.font = fMain; const wm = ctx.measureText(main).width;
+  ctx.font = fSub; const ws = sub ? ctx.measureText(sub).width + 1 : 0;
+  let wv = 0, vtxt = "";
+  if (value !== null) { vtxt = "  " + value; ctx.font = `600 ${Math.round(size * 0.72)}px ${getComputedStyle(document.documentElement).getPropertyValue("--ui")}`; wv = ctx.measureText(vtxt).width; }
+  const total = wm + ws + wv; let cx = x - total / 2; const by = y + size * 0.32;
+  // halo for legibility
+  ctx.lineJoin = "round"; ctx.strokeStyle = C.panel; ctx.lineWidth = 4;
+  ctx.font = fMain; ctx.strokeText(main, cx, by); ctx.fillText(main, cx, by);
+  // vector overline arrow
+  const oy = by - size * 0.86;
+  ctx.lineWidth = Math.max(1.2, size / 14); ctx.strokeStyle = color;
+  ctx.beginPath(); ctx.moveTo(cx + 1, oy); ctx.lineTo(cx + wm + 1, oy); ctx.stroke();
+  ctx.beginPath(); ctx.moveTo(cx + wm + 1, oy); ctx.lineTo(cx + wm - size * 0.18, oy - size * 0.12); ctx.moveTo(cx + wm + 1, oy); ctx.lineTo(cx + wm - size * 0.18, oy + size * 0.12); ctx.stroke();
+  if (sub) { ctx.font = fSub; ctx.strokeStyle = C.panel; ctx.lineWidth = 3; ctx.strokeText(sub, cx + wm + 1, by + size * 0.22); ctx.fillText(sub, cx + wm + 1, by + size * 0.22); }
+  if (vtxt) { ctx.font = `600 ${Math.round(size * 0.72)}px ${getComputedStyle(document.documentElement).getPropertyValue("--ui")}`; ctx.strokeStyle = C.panel; ctx.lineWidth = 4; ctx.strokeText(vtxt, cx + wm + ws, by); ctx.fillText(vtxt, cx + wm + ws, by); }
+  ctx.restore();
+}
+function niceCeil(v) { const steps = [2, 5, 10, 15, 20, 30, 40, 50]; for (const s of steps) if (v <= s) return s; return Math.ceil(v / 10) * 10; }
+function rr(ctx, x, y, w, h, r) { ctx.beginPath(); ctx.roundRect ? ctx.roundRect(x, y, w, h, r) : ctx.rect(x, y, w, h); }
+
+// ---------- forces in screen directions ----------
+function forceVectors() {
+  const th = P.theta, u = { x: Math.cos(th), y: -Math.sin(th) }, n = { x: -Math.sin(th), y: -Math.cos(th) };
+  const mg = P.m * PHYS.g;
+  // impending/actual direction of friction
+  let fdir = Math.sign(S.f) || -1;
+  return {
+    u, n, mg,
+    list: [
+      { key: "app", mag: S.T, dir: u, color: C.applied, main: "F", sub: "app", up: true },
+      { key: "f", mag: Math.abs(S.f), dir: { x: u.x * Math.sign(S.f || -1), y: u.y * Math.sign(S.f || -1) }, color: C.friction, main: "f", sub: "" },
+      { key: "N", mag: S.N || mg * Math.cos(th), dir: n, color: C.normal, main: "F", sub: "N" },
+      { key: "g", mag: mg, dir: { x: 0, y: 1 }, color: C.gravity, main: "F", sub: "g" }
+    ],
+    fdir
+  };
+}
+
+// ---------- STAGE ----------
+function drawStage() {
+  const { w, h } = fit(stage, sctx);
+  const ctx = sctx, th = P.theta, ct = Math.cos(th), st = Math.sin(th);
+  // layout: a window VIEW metres long that slides along the board with the block
+  const mx = 40;
+  const upM = VIEW * st + 0.26 * ct + 0.03, downM = 0.15;
+  ppmTarget = Math.min((w - 2 * mx) / (VIEW * ct + 0.1 * st + 0.02), (h - 30) / (upM + downM));
+  ppm += (ppmTarget - ppm) * 0.25;
+  const sceneW = (VIEW * ct + 0.1 * st) * ppm;
+  const xView = Math.max(mx, (w - sceneW) / 2) + 0.06 * ppm * st;
+  const yView = (h - (upM + downM) * ppm) / 2 + upM * ppm + 6;
+  const camT = Math.min(Math.max(S.sb - 0.33, -0.08), SG_MAX + 0.06 - VIEW);
+  sCam += (camT - sCam) * 0.12;
+  x0 = xView - sCam * ct * ppm; y0 = yView + sCam * st * ppm;
+  const BT = 0.022;
+  const R = (s, hh) => ({ x: x0 + (s * ct - (hh + BT) * st) * ppm, y: y0 - (s * st + (hh + BT) * ct) * ppm });
+
+  // paper background with ruled lines (nod to the notebook sketch)
+  ctx.fillStyle = C.panel; ctx.fillRect(0, 0, w, h);
+  ctx.strokeStyle = C.rule; ctx.lineWidth = 1;
+  const rOff = ((sCam * st * ppm) % 30 + 30) % 30;
+  for (let y = 4 + rOff; y < h; y += 30) { ctx.beginPath(); ctx.moveTo(0, y + 0.5); ctx.lineTo(w, y + 0.5); ctx.stroke(); }
+  ctx.strokeStyle = C.margin; ctx.beginPath(); ctx.moveTo(28.5, 0); ctx.lineTo(28.5, h); ctx.stroke();
+
+  // table
+  if (y0 < h) { ctx.fillStyle = C.table; ctx.fillRect(0, y0, w, h - y0); }
+  ctx.strokeStyle = C["wood-edge"]; ctx.globalAlpha = 0.5; ctx.lineWidth = 1.5;
+  ctx.beginPath(); ctx.moveTo(0, y0 + 0.5); ctx.lineTo(w, y0 + 0.5); ctx.stroke(); ctx.globalAlpha = 1;
+
+  // support stand under the high end
+  if (th > 0.003) {
+    const sp = R(PHYS.boardLen * 0.93, -0.02);
+    ctx.fillStyle = C.metal; ctx.fillRect(sp.x - 4, sp.y, 8, y0 - sp.y);
+    ctx.fillRect(sp.x - 26, y0 - 6, 52, 6);
+    rr(ctx, sp.x - 11, sp.y - 6, 22, 12, 3); ctx.fill();
+  }
+
+  // ---- ramp frame ----
+  ctx.save(); ctx.translate(x0, y0); ctx.rotate(-th); ctx.translate(0, -BT * ppm);
+  const X = s => s * ppm, Y = hh => -hh * ppm;
+  // board
+  const bt = 0.022;
+  ctx.fillStyle = C.wood; ctx.strokeStyle = C["wood-edge"]; ctx.lineWidth = 1.5;
+  ctx.fillRect(0, Y(0), X(PHYS.boardLen), bt * ppm); ctx.strokeRect(0, Y(0), X(PHYS.boardLen), bt * ppm);
+  ctx.globalAlpha = 0.35; ctx.lineWidth = 0.8;
+  for (let k = 1; k < 3; k++) { ctx.beginPath(); for (let s = 0.01; s < PHYS.boardLen; s += 0.01) { const yy = Y(-bt * k / 3) + Math.sin(s * 23 + k) * 1.3; s < 0.015 ? ctx.moveTo(X(s), yy) : ctx.lineTo(X(s), yy); } ctx.stroke(); }
+  ctx.globalAlpha = 1;
+  // end stops
+  ctx.fillStyle = C["wood-dark"];
+  ctx.fillRect(X(0), Y(0.03), X(0.025), 0.03 * ppm);
+  ctx.fillRect(X(PHYS.boardLen - 0.02), Y(0.03), X(0.02), 0.03 * ppm);
+  // ruler marks on the board face so motion is visible while the camera follows
+  const sLo = Math.max(0, sCam - 0.3), sHi = Math.min(PHYS.boardLen, sCam + VIEW + 0.5);
+  ctx.strokeStyle = C["wood-edge"]; ctx.fillStyle = C["wood-edge"]; ctx.lineWidth = 1;
+  ctx.font = `600 ${Math.max(9, Math.min(12, bt * ppm * 0.62))}px ${getComputedStyle(document.documentElement).getPropertyValue("--ui")}`;
+  ctx.textAlign = "left"; ctx.textBaseline = "middle";
+  for (let cm = Math.ceil(sLo * 100 / 5) * 5; cm <= sHi * 100; cm += 5) {
+    const xx = X(cm / 100), major = cm % 50 === 0, mid = cm % 10 === 0;
+    ctx.beginPath(); ctx.moveTo(xx, Y(0)); ctx.lineTo(xx, Y(0) + bt * ppm * (major ? 0.75 : mid ? 0.45 : 0.25)); ctx.stroke();
+    if (major && cm > 0 && cm < PHYS.boardLen * 100) ctx.fillText((cm / 100).toFixed(1) + " m", xx + 6, Y(0) + bt * ppm * 0.58);
+  }
+  ctx.textBaseline = "alphabetic";
+
+  // ---- block ----
+  const g = geom(), sb = S.sb;
+  const bx = X(sb - BL / 2), bw = BL * ppm;
+  // body
+  ctx.fillStyle = C.wood; ctx.strokeStyle = C["wood-edge"]; ctx.lineWidth = 2;
+  rr(ctx, bx, Y(g.bottom + BODY_H), bw, BODY_H * ppm, 3); ctx.fill(); ctx.stroke();
+  ctx.globalAlpha = 0.4; ctx.lineWidth = 0.8;
+  for (const k of [0.35, 0.65]) { ctx.beginPath(); for (let i = 0; i <= 30; i++) { const xx = bx + 6 + (bw - 12) * i / 30; const yy = Y(g.bottom + BODY_H * k) + Math.sin(i * 0.9 + k * 7) * 1.2; i ? ctx.lineTo(xx, yy) : ctx.moveTo(xx, yy); } ctx.stroke(); }
+  ctx.globalAlpha = 1;
+  // pads & wheels
+  const padY = g.sticky ? 0 : g.bottom + BODY_H;
+  ctx.fillStyle = "#2E2E2E";
+  for (let i = 0; i < 4; i++) { const pw = (BL - 0.03) / 4; ctx.fillRect(X(sb - BL / 2 + 0.015 + i * pw + 0.004), Y(padY + PAD_H), (pw - 0.008) * ppm, PAD_H * ppm); }
+  const wheelH = g.sticky ? g.bottom + BODY_H + WHEEL_R : WHEEL_R;
+  for (const off of [-BL / 2 + 0.032, 0, BL / 2 - 0.032]) {
+    const cx = X(sb + off), cy = Y(wheelH), r = WHEEL_R * ppm;
+    ctx.fillStyle = C.metal; ctx.strokeStyle = "#333"; ctx.lineWidth = 1.5;
+    ctx.beginPath(); ctx.arc(cx, cy, r, 0, Math.PI * 2); ctx.fill(); ctx.stroke();
+    const rot = g.sticky ? 0 : -sb / WHEEL_R;
+    ctx.strokeStyle = "#333"; ctx.lineWidth = 1.2;
+    for (let k = 0; k < 3; k++) { const a = rot + k * Math.PI / 3; ctx.beginPath(); ctx.moveTo(cx - Math.cos(a) * r * 0.75, cy - Math.sin(a) * r * 0.75); ctx.lineTo(cx + Math.cos(a) * r * 0.75, cy + Math.sin(a) * r * 0.75); ctx.stroke(); }
+  }
+  // block hook eye
+  const front = sb + BL / 2;
+  ctx.strokeStyle = "#444"; ctx.lineWidth = 2;
+  ctx.beginPath(); ctx.arc(X(front + 0.008), Y(g.hc), 0.007 * ppm, 0, Math.PI * 2); ctx.stroke();
+
+  // ---- string + gauge ----
+  const ext = PHYS.hookRest + S.T / PHYS.k;
+  const hookS = S.sg - ext;
+  const strStart = front + 0.015;
+  const slack = Math.max(0, (PHYS.stringLen - 0.015) - (hookS - strStart) - 0.001);
+  ctx.strokeStyle = C.text; ctx.globalAlpha = 0.9; ctx.lineWidth = 2.4; ctx.lineCap = "round";
+  ctx.beginPath(); ctx.moveTo(X(strStart), Y(g.hc));
+  if (slack > 0.001) { const sag = Math.min(0.05, slack * 0.9); ctx.quadraticCurveTo(X((strStart + hookS) / 2), Y(g.hc - sag * 2), X(hookS), Y(g.hc)); }
+  else ctx.lineTo(X(hookS), Y(g.hc));
+  ctx.stroke(); ctx.globalAlpha = 1;
+  // hook
+  ctx.strokeStyle = "#555"; ctx.lineWidth = 2.2;
+  ctx.beginPath(); ctx.arc(X(hookS) + 4, Y(g.hc), 4.5, Math.PI * 0.4, Math.PI * 1.9); ctx.stroke();
+  // gauge pull rod: slides out of the gauge body as the internal spring stretches
+  const rs = hookS + 0.005, re = S.sg + 0.01, rh = Math.max(3, 0.007 * ppm);
+  ctx.fillStyle = C.metal; ctx.strokeStyle = "#4a535c"; ctx.lineWidth = 1;
+  rr(ctx, X(rs), Y(g.hc) - rh / 2, X(re) - X(rs), rh, rh / 2); ctx.fill(); ctx.stroke();
+  ctx.strokeStyle = "#3a4249"; ctx.lineWidth = 1;
+  for (let s = S.sg - 0.01; s > rs + 0.003; s -= 0.01) { ctx.beginPath(); ctx.moveTo(X(s), Y(g.hc) - rh / 2); ctx.lineTo(X(s), Y(g.hc) + rh / 2); ctx.stroke(); }
+  // gauge body
+  const gx = X(S.sg), gy = Y(g.hc + GAUGE_H / 2), gw = GAUGE_LEN * ppm, gh = GAUGE_H * ppm;
+  ctx.fillStyle = C.panel; ctx.strokeStyle = C.ink; ctx.lineWidth = 2.5;
+  rr(ctx, gx, gy, gw, gh, 6); ctx.fill(); ctx.stroke();
+  // dial
+  const fullScale = niceCeil(P.m * PHYS.g * 1.4);
+  const dcx = gx + gw * 0.45, dcy = gy + gh / 2, dr = gh * 0.38;
+  ctx.fillStyle = C.paper; ctx.beginPath(); ctx.arc(dcx, dcy, dr, 0, Math.PI * 2); ctx.fill();
+  ctx.strokeStyle = C.ink; ctx.lineWidth = 1.5; ctx.stroke();
+  const a0 = Math.PI * 0.75, a1 = Math.PI * 2.25;
+  for (let i = 0; i <= 10; i++) { const a = a0 + (a1 - a0) * i / 10; ctx.lineWidth = i % 5 ? 1 : 2; ctx.beginPath(); ctx.moveTo(dcx + Math.cos(a) * dr * 0.72, dcy + Math.sin(a) * dr * 0.72); ctx.lineTo(dcx + Math.cos(a) * dr * 0.92, dcy + Math.sin(a) * dr * 0.92); ctx.stroke(); }
+  const na = a0 + (a1 - a0) * Math.min(1.04, S.T / fullScale);
+  ctx.strokeStyle = C.friction; ctx.lineWidth = 2.6; ctx.lineCap = "round";
+  ctx.beginPath(); ctx.moveTo(dcx, dcy); ctx.lineTo(dcx + Math.cos(na) * dr * 0.85, dcy + Math.sin(na) * dr * 0.85); ctx.stroke();
+  ctx.fillStyle = C.ink; ctx.beginPath(); ctx.arc(dcx, dcy, 2.5, 0, Math.PI * 2); ctx.fill();
+  ctx.font = `700 ${Math.max(9, gh * 0.22)}px ${getComputedStyle(document.documentElement).getPropertyValue("--ui")}`;
+  ctx.fillStyle = C.ink; ctx.textAlign = "center"; ctx.fillText("N", gx + gw * 0.8, dcy + gh * 0.08);
+  // handle ring
+  const hx = gx + gw + 0.03 * ppm;
+  ctx.strokeStyle = C.ink; ctx.lineWidth = 4;
+  ctx.beginPath(); ctx.moveTo(gx + gw, dcy); ctx.lineTo(hx - 0.014 * ppm, dcy); ctx.stroke();
+  ctx.beginPath(); ctx.arc(hx, dcy, 0.016 * ppm, 0, Math.PI * 2); ctx.stroke();
+  ctx.restore();
+
+  // angle arc
+  if (th > 0.003) {
+    ctx.strokeStyle = C.text; ctx.lineWidth = 1.3;
+    ctx.beginPath(); ctx.arc(x0, y0, 52, -th, 0); ctx.stroke();
+    ctx.font = `italic 17px ${getComputedStyle(document.documentElement).getPropertyValue("--math")}`; ctx.fillStyle = C.text; ctx.textAlign = "left";
+    ctx.fillText(`θ = ${Math.round(th * 180 / Math.PI)}°`, x0 + 60, y0 - 8 - 10 * Math.sin(th));
+  }
+
+  // mini-map: where the block is along the full board
+  {
+    const mw = Math.min(200, w * 0.32), mxp = w - mw - 16, myp = 18;
+    const k = mw / PHYS.boardLen;
+    ctx.globalAlpha = 0.9;
+    ctx.fillStyle = C.wood; ctx.strokeStyle = C["wood-edge"]; ctx.lineWidth = 1;
+    rr(ctx, mxp, myp, mw, 7, 3); ctx.fill(); ctx.stroke();
+    ctx.strokeStyle = C.ink; ctx.lineWidth = 1.5;
+    rr(ctx, mxp + Math.max(0, sCam) * k, myp - 4, Math.min(VIEW, PHYS.boardLen - Math.max(0, sCam)) * k, 15, 3); ctx.stroke();
+    ctx.fillStyle = C.friction; ctx.beginPath(); ctx.arc(mxp + S.sb * k, myp + 3.5, 4.5, 0, Math.PI * 2); ctx.fill();
+    ctx.globalAlpha = 1;
+    ctx.font = `12px ${getComputedStyle(document.documentElement).getPropertyValue("--ui")}`; ctx.fillStyle = C.muted; ctx.textAlign = "right";
+    ctx.fillText(`${(S.sb - 0.2).toFixed(2)} m travelled of ${(PHYS.boardLen - 0.42).toFixed(1)} m`, mxp + mw, myp + 28);
+  }
+
+  // gauge digital reading (screen-aligned) + grab hint
+  const gc = R(S.sg + GAUGE_LEN / 2, g.hc + GAUGE_H / 2 + 0.03);
+  ctx.textAlign = "center"; ctx.font = `700 20px ${getComputedStyle(document.documentElement).getPropertyValue("--ui")}`;
+  ctx.lineWidth = 5; ctx.strokeStyle = C.panel; ctx.fillStyle = C.applied;
+  const txt = S.T.toFixed(2) + " N";
+  ctx.strokeText(txt, gc.x, gc.y - 6); ctx.fillText(txt, gc.x, gc.y - 6);
+  const hp = R(S.sg + GAUGE_LEN + 0.03, g.hc);
+  if (!everGrabbed) {
+    const pulse = (Math.sin(performance.now() / 300) + 1) / 2;
+    ctx.strokeStyle = C.applied; ctx.globalAlpha = 0.35 + 0.5 * pulse; ctx.lineWidth = 3;
+    ctx.beginPath(); ctx.arc(hp.x, hp.y, 22 + 8 * pulse, 0, Math.PI * 2); ctx.stroke(); ctx.globalAlpha = 1;
+    ctx.font = `700 14px ${getComputedStyle(document.documentElement).getPropertyValue("--ui")}`; ctx.fillStyle = C.applied;
+    ctx.fillText("Drag to pull", hp.x - 10, hp.y + 46);
+  }
+
+  // ---- force arrows on block ----
+  const c = R(sb, g.hc);
+  const fv = forceVectors();
+  const scale = (0.2 * ppm) / fv.mg;             // px per newton on stage
+  if (UI.stageArrows) {
+    drawForceSet(ctx, c, fv, scale, Math.max(4, Math.min(7, ppm / 100)), 19, false);
+  }
+  // breakaway burst
+  const now = simTime;
+  for (let i = flashes.length - 1; i >= 0; i--) {
+    const fl = flashes[i], age = now - fl.t0;
+    if (age > 1.4) { flashes.splice(i, 1); continue; }
+    const k = age / 1.4;
+    ctx.save(); ctx.globalAlpha = 1 - k;
+    ctx.strokeStyle = C.friction; ctx.lineWidth = 3;
+    ctx.beginPath(); ctx.arc(c.x, c.y, 20 + 90 * k, 0, Math.PI * 2); ctx.stroke();
+    ctx.font = `700 ${18}px ${getComputedStyle(document.documentElement).getPropertyValue("--ui")}`; ctx.textAlign = "center";
+    ctx.fillStyle = C.friction; ctx.lineWidth = 5; ctx.strokeStyle = C.panel;
+    const ty = c.y - 0.1 * ppm - 40 - 20 * k;
+    ctx.strokeText("It broke free! Static → kinetic friction", c.x, ty); ctx.fillText("It broke free! Static → kinetic friction", c.x, ty);
+    ctx.restore();
+  }
+}
+
+function drawForceSet(ctx, c, fv, scale, width, labelSize, values) {
+  const fl = fv.list, th = P.theta;
+  const flashK = flashes.length ? Math.max(0, 1 - (simTime - flashes[flashes.length - 1].t0) / 0.6) : 0;
+  // ghost: max static friction while stuck
+  if (UI.ghost && !S.sliding && S.fsMax > 0.02) {
+    const d = Math.sign(S.f) || -1;
+    arrow(ctx, c.x, c.y, fv.u.x * d * S.fsMax * scale, fv.u.y * d * S.fsMax * scale, C.friction, width, { dash: [7, 6], alpha: 0.75 });
+  }
+  // gravity components
+  if (UI.comps && th > 0.003) {
+    const par = fv.mg * Math.sin(th), perp = fv.mg * Math.cos(th);
+    arrow(ctx, c.x, c.y, -fv.u.x * par * scale, -fv.u.y * par * scale, C.gravity, width, { dash: [5, 5], alpha: 0.85 });
+    arrow(ctx, c.x, c.y, -fv.n.x * perp * scale, -fv.n.y * perp * scale, C.gravity, width, { dash: [5, 5], alpha: 0.85 });
+    if (values) {
+      const p1 = { x: c.x - fv.u.x * par * scale * 0.6 - fv.n.x * 26, y: c.y - fv.u.y * par * scale * 0.6 - fv.n.y * 26 };
+      smallText(ctx, `mg sinθ = ${par.toFixed(2)} N`, p1.x, p1.y + 4, C.gravity);
+      const p2 = { x: c.x - fv.n.x * perp * scale + fv.u.x * 18, y: c.y - fv.n.y * perp * scale + fv.u.y * 18 };
+      smallText(ctx, `mg cosθ = ${perp.toFixed(2)} N`, p2.x + 52, p2.y, C.gravity);
+    }
+  }
+  for (const F of fl) {
+    if (F.mag * scale < 3) continue;
+    const dx = F.dir.x * F.mag * scale, dy = F.dir.y * F.mag * scale;
+    let col = F.color, glow = 14;
+    if (F.key === "f" && flashK > 0) { glow = 14 + 30 * flashK; }
+    arrow(ctx, c.x, c.y, dx, dy, col, width, { glow, glowColor: col });
+  }
+  // center dot
+  ctx.fillStyle = C.text; ctx.beginPath(); ctx.arc(c.x, c.y, width * 0.75, 0, Math.PI * 2); ctx.fill();
+  // labels
+  for (const F of fl) {
+    const L = F.mag * scale; if (L < 3) continue;
+    const off = labelSize * (values ? 1.3 : 1.05);
+    let lx = c.x + F.dir.x * (L + off), ly = c.y + F.dir.y * (L + off);
+    if (F.key === "app" || F.key === "f") { const k = values ? 2.6 : 1.2; lx = c.x + F.dir.x * (L + off * k) + fv.n.x * labelSize * 1.1; ly = c.y + F.dir.y * (L + off * k) + fv.n.y * labelSize * 1.1; }
+    if (F.key === "N") lx += labelSize * 1.6;
+    if (F.key === "g") lx += labelSize * 2.0 * (values ? 1.4 : 1);
+    vecLabel(ctx, F.main, F.sub, lx, ly, F.color, labelSize, values ? F.mag.toFixed(2) + " N" : null, F.up);
+  }
+}
+function smallText(ctx, t, x, y, color) {
+  ctx.save(); ctx.font = `600 12px ${getComputedStyle(document.documentElement).getPropertyValue("--ui")}`; ctx.textAlign = "center";
+  ctx.strokeStyle = C.panel; ctx.lineWidth = 4; ctx.fillStyle = color; ctx.strokeText(t, x, y); ctx.fillText(t, x, y); ctx.restore();
+}
+
+// ---------- FBD panel ----------
+function drawFBD() {
+  const { w, h } = fit(fbd, fctx);
+  const ctx = fctx; ctx.clearRect(0, 0, w, h);
+  const th = P.theta, c = { x: w * 0.5, y: h * 0.45 };
+  const fv = forceVectors();
+  const maxF = Math.max(fv.mg, S.T, S.fsMax, Math.abs(S.f)) || 1;
+  const scale = Math.min(w, h) * 0.3 / maxF;
+  // surface line + box
+  ctx.save(); ctx.translate(c.x, c.y); ctx.rotate(-th);
+  const bw = Math.min(w, h) * 0.2, bh = bw * 0.42;
+  ctx.strokeStyle = C.muted; ctx.globalAlpha = 0.55; ctx.lineWidth = 1.2;
+  ctx.beginPath(); ctx.moveTo(-w * 0.6, bh / 2); ctx.lineTo(w * 0.6, bh / 2); ctx.stroke();
+  for (let x = -w * 0.6; x < w * 0.6; x += 12) { ctx.beginPath(); ctx.moveTo(x, bh / 2); ctx.lineTo(x - 7, bh / 2 + 7); ctx.stroke(); }
+  ctx.globalAlpha = 1;
+  ctx.fillStyle = C.wood; ctx.strokeStyle = C["wood-edge"]; ctx.lineWidth = 1.8; ctx.globalAlpha = 0.75;
+  rr(ctx, -bw / 2, -bh / 2, bw, bh, 3); ctx.fill(); ctx.globalAlpha = 1; ctx.stroke();
+  ctx.restore();
+  drawForceSet(ctx, c, fv, scale, 5, 18, true);
+  // net force line
+  const net = S.sliding ? (S.T + S.G + S.f) : 0;
+  ctx.font = `600 13px ${getComputedStyle(document.documentElement).getPropertyValue("--ui")}`; ctx.fillStyle = C.muted; ctx.textAlign = "left";
+  ctx.fillText(`Net force along the surface: ${Math.abs(net) < 0.005 ? "0.00" : net.toFixed(2)} N`, 6, h - 8);
+}
+
+// ---------- graph ----------
+function drawGraph() {
+  const { w, h } = fit(graph, gctx);
+  const ctx = gctx; ctx.clearRect(0, 0, w, h);
+  const L = 42, Rm = 10, T = 10, B = 26, pw = w - L - Rm, ph = h - T - B;
+  const mg = P.m * PHYS.g;
+  let ymax = niceCeil(Math.max(mg * 1.0, ...hist.map(p => p.T), PHYS.faces[P.face].mus * mg * Math.cos(P.theta) + mg * Math.sin(P.theta)) * 1.12);
+  const ui = getComputedStyle(document.documentElement).getPropertyValue("--ui");
+  ctx.font = `12px ${ui}`; ctx.fillStyle = C.muted; ctx.strokeStyle = C.line; ctx.lineWidth = 1;
+  const step = ymax <= 5 ? 1 : ymax <= 10 ? 2 : ymax <= 20 ? 5 : 10;
+  ctx.textAlign = "right";
+  for (let v = 0; v <= ymax + 1e-9; v += step) { const y = T + ph - v / ymax * ph; ctx.beginPath(); ctx.moveTo(L, y + 0.5); ctx.lineTo(L + pw, y + 0.5); ctx.stroke(); ctx.fillText(v, L - 6, y + 4); }
+  ctx.save(); ctx.translate(12, T + ph / 2); ctx.rotate(-Math.PI / 2); ctx.textAlign = "center"; ctx.fillText("force (N)", 0, 0); ctx.restore();
+  ctx.textAlign = "center";
+  for (let s = 0; s <= HIST_SPAN; s += 2) { const x = L + pw - s / HIST_SPAN * pw; ctx.fillText(s === 0 ? "now" : `−${s} s`, x, h - 8); }
+  const tx = t => L + pw - (simTime - t) / HIST_SPAN * pw, ty = v => T + ph - Math.min(v, ymax * 1.05) / ymax * ph;
+  ctx.save(); ctx.beginPath(); ctx.rect(L, T - 2, pw, ph + 4); ctx.clip();
+  // max static (dashed)
+  ctx.strokeStyle = C.friction; ctx.globalAlpha = 0.8; ctx.setLineDash([6, 5]); ctx.lineWidth = 1.6;
+  ctx.beginPath(); hist.forEach((p, i) => { const x = tx(p.t), y = ty(p.fs); i ? ctx.lineTo(x, y) : ctx.moveTo(x, y); }); ctx.stroke();
+  ctx.setLineDash([]); ctx.globalAlpha = 1;
+  const line = (key, col, wd) => { ctx.strokeStyle = col; ctx.lineWidth = wd; ctx.lineJoin = "round"; ctx.beginPath(); hist.forEach((p, i) => { const x = tx(p.t), y = ty(p[key]); i ? ctx.lineTo(x, y) : ctx.moveTo(x, y); }); ctx.stroke(); };
+  line("f", C.friction, 2.2);
+  line("T", C.applied, 2.8);
+  // breakaway markers
+  for (const p of hist) if (p.brk) {
+    const x = tx(p.t), y = ty(p.T);
+    ctx.fillStyle = C.applied; ctx.beginPath(); ctx.arc(x, y, 4.5, 0, Math.PI * 2); ctx.fill();
+    ctx.font = `700 12px ${ui}`; const right = x > L + pw - 80; ctx.textAlign = right ? "right" : "left"; ctx.fillStyle = C.applied; ctx.fillText(`peak ${p.T.toFixed(2)} N`, right ? x - 7 : x + 7, Math.max(T + 11, y - 4));
+  }
+  ctx.restore();
+}
+
+// ---------- readouts ----------
+let lastStatus = "";
+function updateReadouts() {
+  $("rT").textContent = S.T.toFixed(2) + " N";
+  $("rF").textContent = Math.abs(S.f).toFixed(2) + " N";
+  $("fKind").textContent = S.sliding ? "kinetic" : "static";
+  $("rN").textContent = (S.N ?? 0).toFixed(2) + " N";
+  $("rG").textContent = (P.m * PHYS.g).toFixed(2) + " N";
+  $("rPar").textContent = (P.m * PHYS.g * Math.sin(P.theta)).toFixed(2) + " N";
+  $("rV").textContent = (S.vb * 100).toFixed(1) + " cm/s";
+  $("peak").textContent = peak.toFixed(2) + " N";
+  const st = S.sliding ? (S.vb > 0 ? "Sliding up: kinetic friction" : "Sliding down: kinetic friction") : (S.T > 0.005 || P.theta > 0 ? "Holding: static friction" : "At rest: static friction");
+  if (st !== lastStatus) { const el = $("status"); el.textContent = st; el.className = "status " + (S.sliding ? "kinetic" : "static"); lastStatus = st; }
+}
+
+// ---------- loop ----------
+let lastFrame = performance.now(), histAcc = 0, brkPending = false;
+function frame(now) {
+  let dt = Math.min(0.05, (now - lastFrame) / 1000); lastFrame = now;
+  if (!UI.paused) {
+    // gauge velocity from drag
+    if (held) { const raw = (S.sg - lastSg) / Math.max(dt, 1e-3); vgFilt += (raw - vgFilt) * 0.3; }
+    lastSg = S.sg;
+    const n = Math.ceil(dt / PHYS.dt), h = dt / n;
+    for (let i = 0; i < n; i++) {
+      if (UI.auto) {
+        S.sg = Math.min(SG_MAX, S.sg + UI.speed * h); S.vg = UI.speed;
+        if (S.sg >= SG_MAX - 1e-6) setAuto(false);
+      } else if (held) { S.vg = vgFilt; }
+      else { S.vg = 0; S.sg = Math.min(S.sg, slackSg()); if (S.sg < slackSg() - 0.06) S.sg = slackSg(); }
+      // the gauge cannot push the block
+      S.sg = Math.max(S.sg, S.sb + BL / 2 + PHYS.hookRest + 0.03);
+      stepPhysics(S, P, h);
+      simTime += h;
+      if (S.breakaway > 0.25) { flashes.push({ t0: simTime }); brkPending = true; }
+      if (S.T > peak) peak = S.T;
+    }
+    if (UI.auto && S.sb >= PHYS.boardLen - BL / 2 - 0.021) { setAuto(false); }
+    hist.push({ t: simTime, T: S.T, f: Math.abs(S.f), fs: S.sliding ? PHYS.faces[P.face].mus * S.N : S.fsMax, brk: brkPending });
+    brkPending = false;
+    while (hist.length && simTime - hist[0].t > HIST_SPAN + 0.5) hist.shift();
+  }
+  drawStage(); drawFBD(); drawGraph(); updateReadouts();
+  requestAnimationFrame(frame);
+}
+
+// ---------- pointer interaction ----------
+function toS(e) {
+  const r = stage.getBoundingClientRect();
+  const px = e.clientX - r.left, py = e.clientY - r.top;
+  const ct = Math.cos(P.theta), st = Math.sin(P.theta);
+  return { s: ((px - x0) * ct - (py - y0) * st) / ppm, h: (-(px - x0) * st - (py - y0) * ct) / ppm, px, py };
+}
+function overGauge(p) {
+  const g = geom(), pad = 26 / ppm;
+  return p.s > S.sg - 0.05 - pad && p.s < S.sg + GAUGE_LEN + 0.05 + pad && Math.abs(p.h - g.hc) < GAUGE_H / 2 + pad + 0.01;
+}
+function alongPx(e) {
+  const r = stage.getBoundingClientRect();
+  return (e.clientX - r.left) * Math.cos(P.theta) - (e.clientY - r.top) * Math.sin(P.theta);
+}
+stage.addEventListener("pointerdown", e => {
+  e.preventDefault(); stage.setPointerCapture(e.pointerId);
+  held = true; everGrabbed = true; setAuto(false);
+  grabAlong = alongPx(e); grabSg = S.sg; vgFilt = 0; lastSg = S.sg;
+  stage.style.cursor = "grabbing";
+});
+stage.addEventListener("pointermove", e => {
+  if (!held) return;
+  const want = grabSg + (alongPx(e) - grabAlong) / ppm;
+  const lo = S.sb + BL / 2 + PHYS.hookRest + 0.03;
+  S.sg = Math.min(SG_MAX, Math.max(lo, want));
+  if (want < lo) { grabSg += lo - want; }   // pulling back past slack doesn't build up "debt"
+});
+const release = e => { if (!held) return; held = false; stage.style.cursor = "grab"; try { stage.releasePointerCapture(e.pointerId); } catch (_) {} };
+stage.addEventListener("pointerup", release);
+stage.addEventListener("pointercancel", release);
+
+// keyboard
+stage.addEventListener("keydown", e => {
+  if (e.key === "ArrowRight" || e.key === "ArrowLeft") {
+    e.preventDefault(); everGrabbed = true; setAuto(false);
+    const d = (e.shiftKey ? 0.02 : 0.004) * (e.key === "ArrowRight" ? 1 : -1);
+    held = true; S.sg = Math.min(SG_MAX, Math.max(S.sb + BL / 2 + PHYS.hookRest + 0.03, S.sg + d));
+    clearTimeout(stage._kt); stage._kt = setTimeout(() => { held = false; }, 1500);
+  } else if (e.key === " ") { e.preventDefault(); setAuto(!UI.auto); }
+});
+
+// ---------- controls ----------
+function setFace(f) {
+  P.face = f;
+  $("faceSticky").setAttribute("aria-pressed", f === "sticky"); $("faceWheels").setAttribute("aria-pressed", f === "wheels");
+  resetBlock();
+}
+$("faceSticky").onclick = () => setFace("sticky");
+$("faceWheels").onclick = () => setFace("wheels");
+$("angle").oninput = e => { P.theta = +e.target.value * Math.PI / 180; $("angleOut").textContent = e.target.value + "°"; };
+$("mass").oninput = e => { P.m = +e.target.value; $("massOut").textContent = P.m.toFixed(2) + " kg"; };
+$("speed").oninput = e => { UI.speed = +e.target.value / 100; $("speedOut").textContent = e.target.value + " cm/s"; };
+function setAuto(on) {
+  UI.auto = on; const b = $("auto");
+  b.setAttribute("aria-pressed", on); b.textContent = on ? "Stop steady pull" : "Start steady pull";
+  if (on) { everGrabbed = true; held = false; }
+}
+$("auto").onclick = () => setAuto(!UI.auto);
+$("reset").onclick = () => resetBlock();
+$("pause").onclick = () => { UI.paused = !UI.paused; $("pause").setAttribute("aria-pressed", UI.paused); $("pause").textContent = UI.paused ? "Resume" : "Pause"; };
+$("clearPeak").onclick = () => { peak = S.T; };
+$("showStageArrows").onchange = e => UI.stageArrows = e.target.checked;
+$("showComps").onchange = e => UI.comps = e.target.checked;
+$("showGhost").onchange = e => UI.ghost = e.target.checked;
+
+resetBlock();
+requestAnimationFrame(frame);
+</script>
+</body>
+</html>
